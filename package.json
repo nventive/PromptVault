@@ -1,0 +1,122 @@
+{
+  "name": "prompts-sync-extension",
+  "displayName": "Prompts Sync Extension",
+  "description": "Sync GitHub Copilot prompts from Logient-Nventive shared repository",
+  "version": "1.1.0",
+  "publisher": "logient-nventive",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MounirAbdousNventive/prompts-logient-nventive.git",
+    "directory": "tools/vscode-extension"
+  },
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Prompts Sync",
+      "properties": {
+        "promptsSync.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable automatic prompts synchronization"
+        },
+        "promptsSync.frequency": {
+          "type": "string",
+          "enum": [
+            "startup",
+            "hourly",
+            "daily",
+            "weekly",
+            "manual"
+          ],
+          "default": "daily",
+          "description": "Frequency of automatic sync"
+        },
+        "promptsSync.customPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom prompts directory path (leave empty for default)"
+        },
+        "promptsSync.repository": {
+          "type": "string",
+          "default": "https://github.com/MounirAbdousNventive/prompts-logient-nventive",
+          "description": "Repository URL to sync from"
+        },
+        "promptsSync.branch": {
+          "type": "string",
+          "default": "master",
+          "description": "Repository branch to sync"
+        },
+        "promptsSync.syncOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sync when VS Code starts"
+        },
+        "promptsSync.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show sync status notifications"
+        },
+        "promptsSync.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logging"
+        },
+        "promptsSync.syncChatmode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sync chatmode prompts"
+        },
+        "promptsSync.syncInstructions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sync instructions prompts"
+        },
+        "promptsSync.syncPrompt": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sync prompt files"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "promptsSync.syncNow",
+        "title": "Sync Now",
+        "category": "Prompts Sync"
+      },
+      {
+        "command": "promptsSync.showStatus",
+        "title": "Show Status",
+        "category": "Prompts Sync"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.70.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.44.0",
+    "typescript": "^5.0.0",
+    "@vscode/test-electron": "^2.3.0",
+    "@vscode/vsce": "^2.19.0"
+  }
+}
