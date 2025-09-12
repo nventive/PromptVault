@@ -1,28 +1,6 @@
-# Open Source Project Template
+# PromptVault (Name TBD)
 
-This repository contains a template to seed a repository for an Open Source
-project.
-
-## How to use this template
-
-1. Check out this repository
-2. Delete the `.git` folder
-3. Git init this repository and start working on your project!
-4. Prior to submitting your request for publication, make sure to review the
-   [Open Source guidelines for publications](https://nventive.visualstudio.com/Internal/_wiki/wikis/Internal_wiki?wikiVersion=GBwikiMaster&pagePath=%2FOpen%20Source%2FPublishing&pageId=7120).
-
-## Features (to keep as-is, configure or remove)
-- [Mergify](https://mergify.io/) is configured. You can edit or remove [.mergify.yml](/.mergify.yml).
-
-The following is the template for the final README.md file:
-
----
-
-# Project Title
-
-{Project tag line}
-
-{Small description of the purpose of the project}
+IDE Extension to automatically sync AI coding assistants configuration and prompt files stored remotely to your IDE.
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
