@@ -6,7 +6,7 @@
   "publisher": "logient-nventive",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MounirAbdousNventive/prompts-logient-nventive.git",
+    "url": "https://github.com/nventive/PromptVault.git",
     "directory": "tools/vscode-extension"
   },
   "engines": {

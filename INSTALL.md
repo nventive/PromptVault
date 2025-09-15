@@ -21,7 +21,7 @@
 1. **Open in VS Code:**
 
    ```bash
-   code /Users/mounir.abdous/Projects/prompts-logient-nventive/tools/vscode-extension
+   code prompts-sync-extension*.vsix
    ```
 
 2. **Press F5 to launch Extension Development Host**
@@ -119,6 +119,9 @@ code --list-extensions | grep prompts-sync
 ## Development Commands
 
 ```bash
+# Install dependencies
+npm install
+
 # Build extension
 npm run compile
 
