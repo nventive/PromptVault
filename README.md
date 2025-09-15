@@ -52,7 +52,6 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 | `promptsSync.frequency`         | Sync frequency                   | `"daily"`                                                            | string  |
 | `promptsSync.customPath`        | Custom prompts directory path    | `""`                                                                 | string  |
 | `promptsSync.repositories`      | List of repository URLs          | `["https://github.com/MounirAbdousNventive/prompts-logient-nventive"]` | array   |
-| `promptsSync.repository`        | Single repository URL (deprecated) | `"https://github.com/MounirAbdousNventive/prompts-logient-nventive"` | string  |
 | `promptsSync.branch`            | Repository branch to sync        | `"master"`                                                           | string  |
 | `promptsSync.syncOnStartup`     | Sync when VS Code starts         | `true`                                                               | boolean |
 | `promptsSync.showNotifications` | Show sync status notifications   | `true`                                                               | boolean |
@@ -80,7 +79,7 @@ You can override this by setting a custom path in `promptsSync.customPath`.
 
 ### Multiple Repository Configuration
 
-The extension now supports syncing from multiple Git repositories simultaneously. This is useful for organizations that maintain prompt collections across multiple repositories or for users who want to combine prompts from different sources.
+The extension supports syncing from multiple Git repositories simultaneously. This is useful for organizations that maintain prompt collections across multiple repositories or for users who want to combine prompts from different sources.
 
 #### Setting up Multiple Repositories
 
@@ -100,15 +99,10 @@ The extension now supports syncing from multiple Git repositories simultaneously
    }
    ```
 
-#### Backward Compatibility
-
-The extension maintains backward compatibility with the single repository configuration:
-- If `promptsSync.repositories` is empty or not configured, it falls back to `promptsSync.repository`
-- Existing configurations continue to work without changes
-
 #### Error Handling
 
 When syncing multiple repositories:
+
 - **Partial Success**: If some repositories sync successfully while others fail, the extension shows a partial success notification with details
 - **Complete Failure**: If all repositories fail, an error notification is shown
 - **Individual Errors**: Repository-specific errors are logged and reported separately
