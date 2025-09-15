@@ -29,19 +29,13 @@ export class ConfigManager {
         return vscode.workspace.getConfiguration('promptsSync').get('customPath', '');
     }
 
-    get repository(): string {
-        return vscode.workspace.getConfiguration('promptsSync').get('repository', 'https://github.com/MounirAbdousNventive/prompts-logient-nventive');
-    }
-
     get repositories(): string[] {
-        const repos = vscode.workspace.getConfiguration('promptsSync').get<string[]>('repositories', []);
-        
-        // If no repositories array is configured, fall back to single repository for backward compatibility
-        if (repos.length === 0) {
-            return [this.repository];
+        const repository = vscode.workspace.getConfiguration('promptsSync').get<string[]>('repositories', []);
+        const uniqueArray = Array.from(new Set(repository));
+        if(uniqueArray.length != repository.length) {
+            vscode.window.showWarningMessage('Duplicate repository URLs found in configuration. Duplicates have been removed.');
         }
-        
-        return repos;
+        return uniqueArray;
     }
 
     get branch(): string {
