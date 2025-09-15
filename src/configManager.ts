@@ -33,6 +33,17 @@ export class ConfigManager {
         return vscode.workspace.getConfiguration('promptsSync').get('repository', 'https://github.com/MounirAbdousNventive/prompts-logient-nventive');
     }
 
+    get repositories(): string[] {
+        const repos = vscode.workspace.getConfiguration('promptsSync').get<string[]>('repositories', []);
+        
+        // If no repositories array is configured, fall back to single repository for backward compatibility
+        if (repos.length === 0) {
+            return [this.repository];
+        }
+        
+        return repos;
+    }
+
     get branch(): string {
         return vscode.workspace.getConfiguration('promptsSync').get('branch', 'master');
     }

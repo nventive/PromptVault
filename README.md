@@ -1,20 +1,22 @@
 # Prompts Sync Extension
 
-> Automatically sync GitHub Copilot prompts from the Logient-Nventive shared prompt bank to your local VS Code environment.
+> Automatically sync GitHub Copilot prompts from multiple Git repositories to your local VS Code environment.
 
 ## 🎯 Overview
 
-The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot prompts, instructions, and templates from the [prompts-logient-nventive](https://github.com/MounirAbdousNventive/prompts-logient-nventive) repository to your local VS Code user prompts directory. This ensures you always have access to the most up-to-date, peer-reviewed prompts across all your projects.
+The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot prompts, instructions, and templates from one or more Git repositories to your local VS Code user prompts directory. This ensures you always have access to the most up-to-date, peer-reviewed prompts across all your projects from multiple sources.
 
 ## ✨ Features
 
 - **🔄 Automatic Sync**: Configurable sync frequency (daily by default)
+- **📦 Multiple Repositories**: Support for syncing from multiple Git repositories simultaneously
 - **🌍 Cross-Platform**: Works on macOS, Windows, and Linux
 - **⚙️ Configurable**: Customizable sync frequency and target directory
 - **🔐 Secure**: Uses your existing GitHub authentication from VS Code
-- **📦 Read-Only**: Safe pull-only synchronization (no risk of overwriting the repository)
+- **📦 Read-Only**: Safe pull-only synchronization (no risk of overwriting repositories)
 - **🎨 User-Friendly**: Simple setup with minimal configuration required
 - **📊 Status Indicators**: Clear feedback on sync status and last update time
+- **🛡️ Error Handling**: Graceful handling of repository conflicts and partial failures
 
 ## 🚀 Quick Start
 
@@ -49,7 +51,8 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 | `promptsSync.enabled`           | Enable/disable automatic syncing | `true`                                                               | boolean |
 | `promptsSync.frequency`         | Sync frequency                   | `"daily"`                                                            | string  |
 | `promptsSync.customPath`        | Custom prompts directory path    | `""`                                                                 | string  |
-| `promptsSync.repository`        | Repository URL                   | `"https://github.com/MounirAbdousNventive/prompts-logient-nventive"` | string  |
+| `promptsSync.repositories`      | List of repository URLs          | `["https://github.com/MounirAbdousNventive/prompts-logient-nventive"]` | array   |
+| `promptsSync.repository`        | Single repository URL (deprecated) | `"https://github.com/MounirAbdousNventive/prompts-logient-nventive"` | string  |
 | `promptsSync.branch`            | Repository branch to sync        | `"master"`                                                           | string  |
 | `promptsSync.syncOnStartup`     | Sync when VS Code starts         | `true`                                                               | boolean |
 | `promptsSync.showNotifications` | Show sync status notifications   | `true`                                                               | boolean |
@@ -74,6 +77,41 @@ The extension automatically detects the correct prompts directory for your opera
 - **Linux**: `~/.config/Code/User/prompts`
 
 You can override this by setting a custom path in `promptsSync.customPath`.
+
+### Multiple Repository Configuration
+
+The extension now supports syncing from multiple Git repositories simultaneously. This is useful for organizations that maintain prompt collections across multiple repositories or for users who want to combine prompts from different sources.
+
+#### Setting up Multiple Repositories
+
+1. **Using VS Code Settings UI**:
+   - Open Settings (`Ctrl+,` or `Cmd+,`)
+   - Search for "promptsSync.repositories"
+   - Click "Add Item" to add each repository URL
+
+2. **Using JSON Configuration**:
+   ```json
+   {
+     "promptsSync.repositories": [
+       "https://github.com/your-org/prompts-main",
+       "https://github.com/your-org/prompts-experimental",
+       "https://github.com/another-org/shared-prompts"
+     ]
+   }
+   ```
+
+#### Backward Compatibility
+
+The extension maintains backward compatibility with the single repository configuration:
+- If `promptsSync.repositories` is empty or not configured, it falls back to `promptsSync.repository`
+- Existing configurations continue to work without changes
+
+#### Error Handling
+
+When syncing multiple repositories:
+- **Partial Success**: If some repositories sync successfully while others fail, the extension shows a partial success notification with details
+- **Complete Failure**: If all repositories fail, an error notification is shown
+- **Individual Errors**: Repository-specific errors are logged and reported separately
 
 ## 🎮 Usage
 
@@ -284,6 +322,16 @@ We welcome contributions to improve the extension! Please see our [Contribution 
 3. Explain the use case and benefits
 
 ## 📋 Changelog
+
+### Version 1.2.0 (Multiple Repository Support)
+
+- ✅ **New Feature**: Support for syncing from multiple Git repositories
+- ✅ Added `promptsSync.repositories` array setting for multiple repository URLs
+- ✅ Enhanced error handling for repository conflicts and failures
+- ✅ Improved status display showing multi-repository sync results
+- ✅ Graceful handling of partial sync success scenarios
+- ✅ Backward compatibility with single repository configuration
+- ✅ Updated documentation with multi-repository setup instructions
 
 ### Version 1.1.0 (Selective Sync & Flattened Structure)
 

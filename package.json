@@ -45,10 +45,18 @@
           "default": "",
           "description": "Custom prompts directory path (leave empty for default)"
         },
+        "promptsSync.repositories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["https://github.com/MounirAbdousNventive/prompts-logient-nventive"],
+          "description": "List of repository URLs to sync from"
+        },
         "promptsSync.repository": {
           "type": "string",
           "default": "https://github.com/MounirAbdousNventive/prompts-logient-nventive",
-          "description": "Repository URL to sync from"
+          "description": "Repository URL to sync from (deprecated - use repositories instead)"
         },
         "promptsSync.branch": {
           "type": "string",
