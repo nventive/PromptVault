@@ -17,7 +17,7 @@ export class StatusBarManager implements vscode.Disposable {
             vscode.StatusBarAlignment.Right, 
             100
         );
-        this.statusBarItem.command = 'promptsSync.syncNow';
+        this.statusBarItem.command = 'promptVault.syncNow';
         this.statusBarItem.show();
         this.updateStatusBar();
     }

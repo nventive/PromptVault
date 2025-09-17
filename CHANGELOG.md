@@ -62,5 +62,5 @@ All notable changes to the "prompts-sync-extension" extension will be documented
 
 ### Commands
 
-- `promptsSync.syncNow` - Manually trigger sync
-- `promptsSync.showStatus` - Show extension status and configuration
+- `promptVault.syncNow` - Manually trigger sync
+- `promptVault.showStatus` - Show extension status and configuration

@@ -48,7 +48,7 @@ export class NotificationManager {
                 'No error details available';
             await this.showInfo(details);
         } else if (result === 'Retry Failed') {
-            vscode.commands.executeCommand('promptsSync.syncNow');
+            vscode.commands.executeCommand('promptVault.syncNow');
         }
     }
 
@@ -60,7 +60,7 @@ export class NotificationManager {
         );
 
         if (result === 'Retry') {
-            vscode.commands.executeCommand('promptsSync.syncNow');
+            vscode.commands.executeCommand('promptVault.syncNow');
         } else if (result === 'Show Logs') {
             vscode.commands.executeCommand('workbench.action.output.show');
         }

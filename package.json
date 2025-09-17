@@ -97,14 +97,14 @@
     },
     "commands": [
       {
-        "command": "promptsSync.syncNow",
+        "command": "promptVault.syncNow",
         "title": "Sync Now",
-        "category": "Prompts Sync"
+        "category": "Prompt Vault"
       },
       {
-        "command": "promptsSync.showStatus",
+        "command": "promptVault.showStatus",
         "title": "Show Status",
-        "category": "Prompts Sync"
+        "category": "Prompt Vault"
       }
     ]
   },
