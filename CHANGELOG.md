@@ -1,6 +1,6 @@
 # VS Code Extension Change Log
 
-All notable changes to the "prompts-sync-extension" extension will be documented in this file.
+All notable changes to the "prompt-vault-extension" extension will be documented in this file.
 
 ## [1.1.0] - 2025-09-01
 
@@ -51,14 +51,14 @@ All notable changes to the "prompts-sync-extension" extension will be documented
 
 ### Configuration Options
 
-- `promptsSync.enabled` - Enable/disable automatic syncing
-- `promptsSync.frequency` - Sync frequency (startup, hourly, daily, weekly, manual)
-- `promptsSync.customPath` - Custom prompts directory path
-- `promptsSync.repository` - Repository URL to sync from
-- `promptsSync.branch` - Repository branch to sync
-- `promptsSync.syncOnStartup` - Sync when VS Code starts
-- `promptsSync.showNotifications` - Show sync status notifications
-- `promptsSync.debug` - Enable debug logging
+- `promptVault.enabled` - Enable/disable automatic syncing
+- `promptVault.frequency` - Sync frequency (startup, hourly, daily, weekly, manual)
+- `promptVault.customPath` - Custom prompts directory path
+- `promptVault.repository` - Repository URL to sync from
+- `promptVault.branch` - Repository branch to sync
+- `promptVault.syncOnStartup` - Sync when VS Code starts
+- `promptVault.showNotifications` - Show sync status notifications
+- `promptVault.debug` - Enable debug logging
 
 ### Commands
 

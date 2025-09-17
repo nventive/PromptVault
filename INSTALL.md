@@ -7,7 +7,7 @@
 1. **Install the extension:**
 
    ```bash
-   code --install-extension prompts-sync-extension-1.0.0.vsix
+   code --install-extension prompt-vault-extension-1.0.0.vsix
    ```
 
 2. **Or install via VS Code UI:**
@@ -32,29 +32,29 @@
 
 2. **Configure Extension (Optional):**
    - Go to Settings (`Ctrl+,`)
-   - Search for "Prompts Sync"
+   - Search for "Prompt Vault"
    - Add a git repository to sync prompts from.
    - Adjust settings as needed
 
 ### 2. Test Manual Sync
 
 1. **Open Command Palette** (`Ctrl+Shift+P`)
-2. **Type:** "Prompts Sync: Sync Now"
+2. **Type:** "Prompt Vault: Sync Now"
 3. **Check status bar** for sync progress indicators
 4. **Verify prompts directory** was created and populated
 
 ### 3. Test Status Display
 
 1. **Open Command Palette** (`Ctrl+Shift+P`)
-2. **Type:** "Prompts Sync: Show Status"
+2. **Type:** "Prompt Vault: Show Status"
 3. **Review configuration** and status information
 
 ### 4. Check Debug Logs
 
 1. **Enable debug mode:**
-   - Settings → Search "promptsSync.debug" → Enable
+   - Settings → Search "promptVault.debug" → Enable
 2. **View logs:**
-   - View → Output → Select "Prompts Sync" channel
+   - View → Output → Select "Prompt Vault" channel
 
 ## Expected Behavior
 
@@ -103,10 +103,10 @@
 
 ```bash
 # Check if extension is loaded
-code --list-extensions | grep prompts-sync
+code --list-extensions | grep prompt-vault
 
 # View extension logs
-# Open VS Code → View → Output → Select "Prompts Sync"
+# Open VS Code → View → Output → Select "Prompt Vault"
 
 # Reset extension data
 # Close VS Code, delete prompts directory, restart VS Code

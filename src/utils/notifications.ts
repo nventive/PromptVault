@@ -4,7 +4,7 @@ export class NotificationManager {
     private config: vscode.WorkspaceConfiguration;
 
     constructor() {
-        this.config = vscode.workspace.getConfiguration('promptsSync');
+        this.config = vscode.workspace.getConfiguration('promptVault');
     }
 
     private get showNotifications(): boolean {
