@@ -1,12 +1,12 @@
 {
-  "name": "prompts-sync-extension",
-  "displayName": "Prompts Sync Extension",
-  "description": "Sync GitHub Copilot prompts from Logient-Nventive shared repository",
-  "version": "1.1.0",
+  "name": "prompt-vault-extension",
+  "displayName": "Prompt Vault extension",
+  "description": "Sync GitHub Copilot prompts, chatmodes and instructions from git repositories",
+  "version": "1.2.0",
   "publisher": "logient-nventive",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MounirAbdousNventive/prompts-logient-nventive.git",
+    "url": "https://github.com/nventive/PromptVault.git",
     "directory": "tools/vscode-extension"
   },
   "engines": {
@@ -21,12 +21,12 @@
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Prompts Sync",
+      "title": "Prompt Vault",
       "properties": {
         "promptsSync.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable automatic prompts synchronization"
+          "description": "Enable automatic synchronization"
         },
         "promptsSync.frequency": {
           "type": "string",
@@ -50,18 +50,20 @@
           "items": {
             "type": "string"
           },
-          "default": ["https://github.com/MounirAbdousNventive/prompts-logient-nventive"],
-          "description": "List of repository URLs to sync from"
+          "default": ["https://github.com/github/awesome-copilot"],
+          "description": "List of repository URLs to sync from",
+          "order": 0
         },
         "promptsSync.branch": {
           "type": "string",
-          "default": "master",
-          "description": "Repository branch to sync"
+          "default": "main",
+          "description": "Repository branch to sync",
+          "order": 10
         },
         "promptsSync.syncOnStartup": {
           "type": "boolean",
           "default": true,
-          "description": "Sync when VS Code starts"
+          "description": "Sync when Visual Studio Code starts"
         },
         "promptsSync.showNotifications": {
           "type": "boolean",
@@ -76,17 +78,20 @@
         "promptsSync.syncChatmode": {
           "type": "boolean",
           "default": true,
-          "description": "Sync chatmode prompts"
+          "description": "Sync chatmodes",
+          "order": 2
         },
         "promptsSync.syncInstructions": {
           "type": "boolean",
-          "default": true,
-          "description": "Sync instructions prompts"
+          "default": false,
+          "description": "Sync instructions",
+          "order": 3
         },
         "promptsSync.syncPrompt": {
           "type": "boolean",
           "default": true,
-          "description": "Sync prompt files"
+          "description": "Sync prompts",
+          "order": 1
         }
       }
     },

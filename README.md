@@ -24,7 +24,7 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 
 - VS Code 1.70.0 or higher
 - GitHub authentication configured in VS Code
-- Access to the [prompts-logient-nventive](https://github.com/MounirAbdousNventive/prompts-logient-nventive) repository
+- Access to a git repository with prompts and configuration files
 
 ### Installation
 
@@ -213,7 +213,7 @@ cd prompts-logient-nventive/tools/vscode-extension
 npm install
 
 # Build the extension
-npm run build
+npm run compile
 
 # Package the extension
 npm run package
@@ -240,60 +240,12 @@ tools/vscode-extension/
 
 ### Scripts
 
-- `npm run build` - Build the extension
+- `npm run compile` - Build the extension
 - `npm run watch` - Build in watch mode
 - `npm run package` - Create VSIX package
 - `npm run test` - Run tests
 - `npm run lint` - Run ESLint
 
-## 📊 Extension Manifest
-
-Key details from `package.json`:
-
-```json
-{
-  "name": "prompts-sync-extension",
-  "displayName": "Prompts Sync Extension",
-  "description": "Sync GitHub Copilot prompts from Logient-Nventive shared repository",
-  "version": "1.0.0",
-  "publisher": "logient-nventive",
-  "engines": {
-    "vscode": "^1.70.0"
-  },
-  "categories": ["Other"],
-  "activationEvents": ["onStartupFinished"],
-  "contributes": {
-    "configuration": {
-      "title": "Prompts Sync",
-      "properties": {
-        "promptsSync.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable automatic prompts synchronization"
-        },
-        "promptsSync.frequency": {
-          "type": "string",
-          "enum": ["startup", "hourly", "daily", "weekly", "manual"],
-          "default": "daily",
-          "description": "Frequency of automatic sync"
-        }
-      }
-    },
-    "commands": [
-      {
-        "command": "promptsSync.syncNow",
-        "title": "Sync Now",
-        "category": "Prompts Sync"
-      },
-      {
-        "command": "promptsSync.showStatus",
-        "title": "Show Status",
-        "category": "Prompts Sync"
-      }
-    ]
-  }
-}
-```
 
 ## 🤝 Contributing
 
@@ -355,9 +307,9 @@ Internal use only - Logient/Nventive Development Team
 
 For support and questions:
 
-- Create an issue in the [repository](https://github.com/MounirAbdousNventive/prompts-logient-nventive/issues)
-- Contact the DevOps team
 - Check the [troubleshooting section](#-troubleshooting) above
+- Report an issue.
+
 
 ---
 

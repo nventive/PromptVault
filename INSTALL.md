@@ -14,16 +14,11 @@
    - Open VS Code
    - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
    - Type "Extensions: Install from VSIX"
-   - Select the `prompts-sync-extension-1.0.0.vsix` file
+   - Select the `prompt-vault-extension.vsix` file
 
 ### Option 2: Development Mode
 
 1. **Open in VS Code:**
-
-   ```bash
-   code /Users/mounir.abdous/Projects/prompts-logient-nventive/tools/vscode-extension
-   ```
-
 2. **Press F5 to launch Extension Development Host**
 
 ## Testing the Extension
@@ -38,6 +33,7 @@
 2. **Configure Extension (Optional):**
    - Go to Settings (`Ctrl+,`)
    - Search for "Prompts Sync"
+   - Add a git repository to sync prompts from.
    - Adjust settings as needed
 
 ### 2. Test Manual Sync
@@ -129,10 +125,10 @@ npm run watch
 npx @vscode/vsce package
 
 # Install locally
-code --install-extension prompts-sync-extension-1.0.0.vsix
+code --install-extension prompt-vault-extension-<version>.vsix
 
 # Uninstall
-code --uninstall-extension logient-nventive.prompts-sync-extension
+code --uninstall-extension logient-nventive.prompt-vault-extension
 ```
 
 ## Extension Structure Verification
