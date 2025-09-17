@@ -148,6 +148,7 @@ export class SyncManager {
         if (this.config.syncPrompt) {
             allowedPaths.push(REPO_SYNC_PROMPT_PATH);
         }
+        console.log('Allowed paths for sync:', allowedPaths);
 
         // If no types are selected, return empty array
         if (allowedPaths.length === 0) {
@@ -159,7 +160,7 @@ export class SyncManager {
             if (item.type !== 'blob') {
                 return false;
             }
-            
+
             return allowedPaths.some(path => item.path.startsWith(path)) &&
                    (item.path.endsWith('.md') || item.path.endsWith('.txt'));
         });
@@ -172,17 +173,28 @@ export class SyncManager {
         let itemsUpdated = 0;
 
         for (const file of files) {
+            this.logger.debug(`Syncing file: ${file.path}`);
+            let content = null;
+
             try {
-                this.logger.debug(`Syncing file: ${file.path}`);
-                
-                // Get file content from GitHub
-                const content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
-                
+                content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
+            } catch (error) {
+                // An error occured will retrieving file content, Return here
+                this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
+                this.notifications.showSyncError(`Failed to fetch content for ${file.path}: ${error}. Make sure that the correct is set. Current branch: ${this.config.branch}`);
+                return itemsUpdated;
+            }
+
+            try {
                 // Flatten the structure - extract just the filename and place directly in prompts directory
                 const fileName = this.fileSystem.getBasename(file.path);
                 const localPath = this.fileSystem.joinPath(promptsDir, fileName);
                 
                 // Check if file needs updating
+                if(!content) {
+                    this.logger.warn(`No content retrieved for ${file.path}, skipping`);
+                    continue;
+                }
                 const needsUpdate = await this.shouldUpdateFile(localPath, content);
                 
                 if (needsUpdate) {
@@ -221,7 +233,7 @@ export class SyncManager {
 
                 // Filter relevant files
                 const relevantFiles = this.filterRelevantFiles(tree.tree);
-
+                
                 if(relevantFiles.length === 0) {
                     this.logger.warn(`No relevant files found to sync in ${repoUrl} based on current settings`);
                     const promptLocation = `${REPO_SYNC_CHAT_MODE_PATH}, ${REPO_SYNC_INSTRUCTIONS_PATH}, ${REPO_SYNC_PROMPT_PATH}`;

@@ -39,7 +39,7 @@ export class ConfigManager {
     }
 
     get branch(): string {
-        return vscode.workspace.getConfiguration('promptsSync').get('branch', 'master');
+        return vscode.workspace.getConfiguration('promptsSync').get('branch', 'main');
     }
 
     get syncOnStartup(): boolean {
@@ -59,7 +59,7 @@ export class ConfigManager {
     }
 
     get syncInstructions(): boolean {
-        return vscode.workspace.getConfiguration('promptsSync').get('syncInstructions', true);
+        return vscode.workspace.getConfiguration('promptsSync').get('syncInstructions', false);
     }
 
     get syncPrompt(): boolean {
