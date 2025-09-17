@@ -5,7 +5,7 @@ import { Logger } from './utils/logger';
 import { NotificationManager } from './utils/notifications';
 import { GitHubApiManager, GitHubTreeItem } from './utils/github';
 import { FileSystemManager } from './utils/fileSystem';
-
+import { REPO_SYNC_CHAT_MODE_PATH, REPO_SYNC_INSTRUCTIONS_PATH, REPO_SYNC_PROMPT_PATH,  } from './constant';
 export interface SyncResult {
     success: boolean;
     itemsUpdated: number;
@@ -140,13 +140,13 @@ export class SyncManager {
         
         // Build list of allowed paths based on settings
         if (this.config.syncChatmode) {
-            allowedPaths.push('prompts/chatmode/');
+            allowedPaths.push(REPO_SYNC_CHAT_MODE_PATH);
         }
         if (this.config.syncInstructions) {
-            allowedPaths.push('prompts/instructions/');
+            allowedPaths.push(REPO_SYNC_INSTRUCTIONS_PATH);
         }
         if (this.config.syncPrompt) {
-            allowedPaths.push('prompts/prompt/');
+            allowedPaths.push(REPO_SYNC_PROMPT_PATH);
         }
 
         // If no types are selected, return empty array
@@ -221,6 +221,19 @@ export class SyncManager {
 
                 // Filter relevant files
                 const relevantFiles = this.filterRelevantFiles(tree.tree);
+
+                if(relevantFiles.length === 0) {
+                    this.logger.warn(`No relevant files found to sync in ${repoUrl} based on current settings`);
+                    const promptLocation = `${REPO_SYNC_CHAT_MODE_PATH}, ${REPO_SYNC_INSTRUCTIONS_PATH}, ${REPO_SYNC_PROMPT_PATH}`;
+                    results.push({
+                        repository: repoUrl,
+                        success: false,
+                        itemsUpdated: 0,
+                        error: `No relevant files found, make sure prompts are in valid directories: ${promptLocation}`
+                    });
+                    errors.push(`${repoUrl}: No relevant files found`);
+                    continue;
+                }
                 this.logger.debug(`Found ${relevantFiles.length} relevant files to sync for ${repoUrl}`);
 
                 // Sync files
