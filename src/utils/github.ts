@@ -88,7 +88,7 @@ export class GitHubApiManager {
         if (!session) {
             throw new Error('GitHub authentication required');
         }
-
+        console.log(`Fetching file content from ${owner}/${repo}/${path} on branch ${branch}`);
         const response = await fetch(`${this.baseUrl}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
             headers: {
                 'Authorization': `Bearer ${session.accessToken}`,

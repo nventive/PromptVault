@@ -4,7 +4,7 @@ export class NotificationManager {
     private config: vscode.WorkspaceConfiguration;
 
     constructor() {
-        this.config = vscode.workspace.getConfiguration('promptsSync');
+        this.config = vscode.workspace.getConfiguration('promptVault');
     }
 
     private get showNotifications(): boolean {
@@ -34,6 +34,24 @@ export class NotificationManager {
         await this.showInfo(`✅ Prompts synced successfully! ${itemsCount} items updated.`);
     }
 
+    async showPartialSyncSuccess(itemsCount: number, successCount: number, totalCount: number, errors: string[]): Promise<void> {
+        const message = `⚠️ Partial sync completed! ${itemsCount} items updated from ${successCount}/${totalCount} repositories.`;
+        const result = await this.showWarning(
+            message,
+            'Show Details',
+            'Retry Failed'
+        );
+
+        if (result === 'Show Details') {
+            const details = errors.length > 0 ? 
+                `Failed repositories:\n${errors.join('\n')}` : 
+                'No error details available';
+            await this.showInfo(details);
+        } else if (result === 'Retry Failed') {
+            vscode.commands.executeCommand('promptVault.syncNow');
+        }
+    }
+
     async showSyncError(error: string): Promise<void> {
         const result = await this.showError(
             `❌ Failed to sync prompts: ${error}`,
@@ -42,7 +60,7 @@ export class NotificationManager {
         );
 
         if (result === 'Retry') {
-            vscode.commands.executeCommand('promptsSync.syncNow');
+            vscode.commands.executeCommand('promptVault.syncNow');
         } else if (result === 'Show Logs') {
             vscode.commands.executeCommand('workbench.action.output.show');
         }

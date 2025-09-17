@@ -5,11 +5,25 @@ import { Logger } from './utils/logger';
 import { NotificationManager } from './utils/notifications';
 import { GitHubApiManager, GitHubTreeItem } from './utils/github';
 import { FileSystemManager } from './utils/fileSystem';
-
+import { REPO_SYNC_CHAT_MODE_PATH, REPO_SYNC_INSTRUCTIONS_PATH, REPO_SYNC_PROMPT_PATH,  } from './constant';
 export interface SyncResult {
     success: boolean;
     itemsUpdated: number;
     error?: string;
+}
+
+export interface RepositorySyncResult {
+    repository: string;
+    success: boolean;
+    itemsUpdated: number;
+    error?: string;
+}
+
+export interface MultiRepositorySyncResult {
+    overallSuccess: boolean;
+    totalItemsUpdated: number;
+    repositories: RepositorySyncResult[];
+    errors: string[];
 }
 
 export class SyncManager {
@@ -78,31 +92,38 @@ export class SyncManager {
                 }
             }
 
-            // Parse repository URL
-            const { owner, repo } = this.github.parseRepositoryUrl(this.config.repository);
-            this.logger.debug(`Syncing from ${owner}/${repo} branch ${this.config.branch}`);
+            const repositories = this.config.repositories;
+            this.logger.info(`Syncing from ${repositories.length} repositories`);
 
-            // Get repository tree
-            const tree = await this.github.getRepositoryTree(owner, repo, this.config.branch);
-            this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items`);
+            const result = await this.syncMultipleRepositories(repositories);
 
-            // Filter relevant files
-            const relevantFiles = this.filterRelevantFiles(tree.tree);
-            this.logger.debug(`Found ${relevantFiles.length} relevant files to sync`);
-
-            // Sync files
-            const itemsUpdated = await this.syncFiles(owner, repo, relevantFiles);
-
-            // Update status
-            this.statusBar.setStatus(SyncStatus.Success);
-            await this.notifications.showSyncSuccess(itemsUpdated);
-            
-            this.logger.info(`Sync completed successfully. ${itemsUpdated} items updated.`);
+            // Update status based on overall result
+            if (result.overallSuccess) {
+                this.statusBar.setStatus(SyncStatus.Success);
+                await this.notifications.showSyncSuccess(result.totalItemsUpdated);
+                this.logger.info(`Sync completed successfully. ${result.totalItemsUpdated} items updated across ${repositories.length} repositories.`);
+            } else {
+                // Partial success or complete failure
+                const successCount = result.repositories.filter(r => r.success).length;
+                if (successCount > 0) {
+                    this.statusBar.setStatus(SyncStatus.Success, `${successCount}/${repositories.length} repos synced`);
+                    await this.notifications.showPartialSyncSuccess(result.totalItemsUpdated, successCount, repositories.length, result.errors);
+                    this.logger.warn(`Partial sync completed. ${result.totalItemsUpdated} items updated from ${successCount}/${repositories.length} repositories.`);
+                } else {
+                    this.statusBar.setStatus(SyncStatus.Error, 'All repos failed');
+                    await this.notifications.showSyncError(`All repositories failed: ${result.errors.join('; ')}`);
+                    this.logger.error('All repositories failed to sync');
+                }
+            }
             
             // Schedule next sync
             this.scheduleNextSync();
 
-            return { success: true, itemsUpdated };
+            return { 
+                success: result.overallSuccess, 
+                itemsUpdated: result.totalItemsUpdated, 
+                error: result.errors.length > 0 ? result.errors.join('; ') : undefined 
+            };
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -119,14 +140,15 @@ export class SyncManager {
         
         // Build list of allowed paths based on settings
         if (this.config.syncChatmode) {
-            allowedPaths.push('prompts/chatmode/');
+            allowedPaths.push(REPO_SYNC_CHAT_MODE_PATH);
         }
         if (this.config.syncInstructions) {
-            allowedPaths.push('prompts/instructions/');
+            allowedPaths.push(REPO_SYNC_INSTRUCTIONS_PATH);
         }
         if (this.config.syncPrompt) {
-            allowedPaths.push('prompts/prompt/');
+            allowedPaths.push(REPO_SYNC_PROMPT_PATH);
         }
+        console.log('Allowed paths for sync:', allowedPaths);
 
         // If no types are selected, return empty array
         if (allowedPaths.length === 0) {
@@ -138,7 +160,7 @@ export class SyncManager {
             if (item.type !== 'blob') {
                 return false;
             }
-            
+
             return allowedPaths.some(path => item.path.startsWith(path)) &&
                    (item.path.endsWith('.md') || item.path.endsWith('.txt'));
         });
@@ -151,17 +173,28 @@ export class SyncManager {
         let itemsUpdated = 0;
 
         for (const file of files) {
+            this.logger.debug(`Syncing file: ${file.path}`);
+            let content = null;
+
             try {
-                this.logger.debug(`Syncing file: ${file.path}`);
-                
-                // Get file content from GitHub
-                const content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
-                
+                content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
+            } catch (error) {
+                // An error occured will retrieving file content, Return here
+                this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
+                this.notifications.showSyncError(`Failed to fetch content for ${file.path}: ${error}. Make sure that the correct is set. Current branch: ${this.config.branch}`);
+                return itemsUpdated;
+            }
+
+            try {
                 // Flatten the structure - extract just the filename and place directly in prompts directory
                 const fileName = this.fileSystem.getBasename(file.path);
                 const localPath = this.fileSystem.joinPath(promptsDir, fileName);
                 
                 // Check if file needs updating
+                if(!content) {
+                    this.logger.warn(`No content retrieved for ${file.path}, skipping`);
+                    continue;
+                }
                 const needsUpdate = await this.shouldUpdateFile(localPath, content);
                 
                 if (needsUpdate) {
@@ -179,6 +212,77 @@ export class SyncManager {
         }
 
         return itemsUpdated;
+    }
+
+    private async syncMultipleRepositories(repositories: string[]): Promise<MultiRepositorySyncResult> {
+        const results: RepositorySyncResult[] = [];
+        let totalItemsUpdated = 0;
+        const errors: string[] = [];
+
+        for (const repoUrl of repositories) {
+            try {
+                this.logger.debug(`Syncing repository: ${repoUrl}`);
+                
+                // Parse repository URL
+                const { owner, repo } = this.github.parseRepositoryUrl(repoUrl);
+                this.logger.debug(`Syncing from ${owner}/${repo} branch ${this.config.branch}`);
+
+                // Get repository tree
+                const tree = await this.github.getRepositoryTree(owner, repo, this.config.branch);
+                this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
+
+                // Filter relevant files
+                const relevantFiles = this.filterRelevantFiles(tree.tree);
+                
+                if(relevantFiles.length === 0) {
+                    this.logger.warn(`No relevant files found to sync in ${repoUrl} based on current settings`);
+                    const promptLocation = `${REPO_SYNC_CHAT_MODE_PATH}, ${REPO_SYNC_INSTRUCTIONS_PATH}, ${REPO_SYNC_PROMPT_PATH}`;
+                    results.push({
+                        repository: repoUrl,
+                        success: false,
+                        itemsUpdated: 0,
+                        error: `No relevant files found, make sure prompts are in valid directories: ${promptLocation}`
+                    });
+                    errors.push(`${repoUrl}: No relevant files found`);
+                    continue;
+                }
+                this.logger.debug(`Found ${relevantFiles.length} relevant files to sync for ${repoUrl}`);
+
+                // Sync files
+                const itemsUpdated = await this.syncFiles(owner, repo, relevantFiles);
+                
+                results.push({
+                    repository: repoUrl,
+                    success: true,
+                    itemsUpdated,
+                });
+
+                totalItemsUpdated += itemsUpdated;
+                this.logger.info(`Successfully synced ${itemsUpdated} items from ${repoUrl}`);
+
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                this.logger.warn(`Failed to sync repository ${repoUrl}: ${errorMessage}`);
+                
+                results.push({
+                    repository: repoUrl,
+                    success: false,
+                    itemsUpdated: 0,
+                    error: errorMessage
+                });
+
+                errors.push(`${repoUrl}: ${errorMessage}`);
+            }
+        }
+
+        const overallSuccess = results.every(r => r.success);
+        
+        return {
+            overallSuccess,
+            totalItemsUpdated,
+            repositories: results,
+            errors
+        };
     }
 
     private async shouldUpdateFile(localPath: string, newContent: string): Promise<boolean> {
@@ -233,17 +337,30 @@ export class SyncManager {
             syncTypes.push('Prompt');
         }
 
+        const repositories = this.config.repositories;
+        
         const items = [
             'Sync Status',
             '──────────',
             `Enabled: ${this.config.enabled ? '✅' : '❌'}`,
             `Frequency: ${this.config.frequency}`,
-            `Repository: ${this.config.repository}`,
             `Branch: ${this.config.branch}`,
             `Prompts Directory: ${this.config.getPromptsDirectory()}`,
             `Sync on Startup: ${this.config.syncOnStartup ? '✅' : '❌'}`,
             `Show Notifications: ${this.config.showNotifications ? '✅' : '❌'}`,
             `Debug Mode: ${this.config.debug ? '✅' : '❌'}`,
+            '',
+            'Repositories',
+            '────────────',
+            `Count: ${repositories.length}`,
+        ];
+
+        // Add each repository
+        repositories.forEach((repo, index) => {
+            items.push(`${index + 1}. ${repo}`);
+        });
+
+        items.push(
             '',
             'Sync Types',
             '──────────',
@@ -257,7 +374,7 @@ export class SyncManager {
             '• Sync Now: Ctrl+Shift+P → "Prompts Sync: Sync Now"',
             '• Show Status: Ctrl+Shift+P → "Prompts Sync: Show Status"',
             '• Configure: File → Preferences → Settings → Search "Prompts Sync"'
-        ];
+        );
 
         const quickPick = vscode.window.createQuickPick();
         quickPick.items = items.map(item => ({ label: item }));
