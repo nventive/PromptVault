@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vscode-extension
-          path: *.vsix
+          path: '**/*.vsix'
 
       - name: Deploy to Marketplace
         run: |
