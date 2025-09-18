@@ -171,26 +171,39 @@ export class SyncManager {
         await this.fileSystem.ensureDirectoryExists(promptsDir);
         
         let itemsUpdated = 0;
+        let statusBarRepoCount = 0;
 
         for (const file of files) {
             this.logger.debug(`Syncing file: ${file.path}`);
+            this.statusBar.setStatus(SyncStatus.Syncing, `Syncing ${statusBarRepoCount}/${files.length}`);
+            statusBarRepoCount++;
+
             let content = null;
+            const fileName = this.fileSystem.getBasename(file.path);
+            const localPath = this.fileSystem.joinPath(promptsDir, fileName);
+
+            const fileExists = await this.fileSystem.fileExists(localPath);
+            if(fileExists) {
+                const localFileContent = await this.fileSystem.readFileContent(localPath);
+                const localFileHash = await this.fileSystem.calculateFileHash(localFileContent);
+
+                const githubFileHash = await this.github.getFileHash(owner, repo, file.path, this.config.branch);
+                if(localFileHash === githubFileHash) {
+                    this.logger.info(`File ${file.path} is up to date, skipping`);
+                    continue; 
+                }
+            }
 
             try {
                 content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
             } catch (error) {
                 // An error occured will retrieving file content, Return here
                 this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
-                this.notifications.showSyncError(`Failed to fetch content for ${file.path}: ${error}. Make sure that the correct is set. Current branch: ${this.config.branch}`);
+                this.notifications.showSyncError(`Failed to fetch content for ${file.path}: ${error}. Make sure that the branch is correct. Current branch: ${this.config.branch}`);
                 return itemsUpdated;
             }
 
             try {
-                // Flatten the structure - extract just the filename and place directly in prompts directory
-                const fileName = this.fileSystem.getBasename(file.path);
-                const localPath = this.fileSystem.joinPath(promptsDir, fileName);
-                
-                // Check if file needs updating
                 if(!content) {
                     this.logger.warn(`No content retrieved for ${file.path}, skipping`);
                     continue;
@@ -205,6 +218,7 @@ export class SyncManager {
                     this.logger.debug(`File unchanged: ${localPath}`);
                 }
                 
+
             } catch (error) {
                 this.logger.warn(`Failed to sync file ${file.path}: ${error}`);
                 // Continue with other files even if one fails
