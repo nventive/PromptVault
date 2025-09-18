@@ -25,7 +25,7 @@ jobs:
         run: npm install
 
       - name: Build the extension
-        run: npm run build
+        run: npm run compile
 
       - name: Package the extension
         run: npm run package
@@ -43,7 +43,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: vscode-extension
-          path: path/to/your/package.vsix
+          path: *.vsix
 
       - name: Deploy to Marketplace
         run: |
