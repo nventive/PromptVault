@@ -182,19 +182,19 @@ export class SyncManager {
             const fileName = this.fileSystem.getBasename(file.path);
             const localPath = this.fileSystem.joinPath(promptsDir, fileName);
 
-            const fileExists = await this.fileSystem.fileExists(localPath);
-            if(fileExists) {
-                const localFileContent = await this.fileSystem.readFileContent(localPath);
-                const localFileHash = await this.fileSystem.calculateFileHash(localFileContent);
-
-                const githubFileHash = await this.github.getFileHash(owner, repo, file.path, this.config.branch);
-                if(localFileHash === githubFileHash) {
-                    this.logger.info(`File ${file.path} is up to date, skipping`);
-                    continue; 
-                }
-            }
-
             try {
+                const fileExists = await this.fileSystem.fileExists(localPath);
+                if(fileExists) {
+                    const localFileContent = await this.fileSystem.readFileContent(localPath);
+                    const localFileHash = await this.fileSystem.calculateFileHash(localFileContent);
+
+                    const githubFileHash = await this.github.getFileHash(owner, repo, file.path, this.config.branch);
+                    if(localFileHash === githubFileHash) {
+                        this.logger.info(`File ${file.path} is up to date, skipping`);
+                        continue; 
+                    }
+                }
+                
                 content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
             } catch (error) {
                 // An error occured will retrieving file content, Return here
@@ -208,7 +208,7 @@ export class SyncManager {
                     this.logger.warn(`No content retrieved for ${file.path}, skipping`);
                     continue;
                 }
-                
+
                 await this.fileSystem.writeFileContent(localPath, content);
                 itemsUpdated++;
             } catch (error) {
@@ -289,19 +289,6 @@ export class SyncManager {
             repositories: results,
             errors
         };
-    }
-
-    private async shouldUpdateFile(localPath: string, newContent: string): Promise<boolean> {
-        try {
-            if (!(await this.fileSystem.fileExists(localPath))) {
-                return true; // File doesn't exist, needs to be created
-            }
-
-            const existingContent = await this.fileSystem.readFileContent(localPath);
-            return existingContent !== newContent;
-        } catch {
-            return true; // Error reading file, assume it needs updating
-        }
     }
 
     private scheduleNextSync(): void {
