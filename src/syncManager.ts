@@ -208,17 +208,9 @@ export class SyncManager {
                     this.logger.warn(`No content retrieved for ${file.path}, skipping`);
                     continue;
                 }
-                const needsUpdate = await this.shouldUpdateFile(localPath, content);
                 
-                if (needsUpdate) {
-                    await this.fileSystem.writeFileContent(localPath, content);
-                    itemsUpdated++;
-                    this.logger.debug(`Updated file: ${localPath}`);
-                } else {
-                    this.logger.debug(`File unchanged: ${localPath}`);
-                }
-                
-
+                await this.fileSystem.writeFileContent(localPath, content);
+                itemsUpdated++;
             } catch (error) {
                 this.logger.warn(`Failed to sync file ${file.path}: ${error}`);
                 // Continue with other files even if one fails
