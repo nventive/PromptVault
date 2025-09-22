@@ -18,19 +18,19 @@ export class ConfigManager {
     };
 
     get enabled(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('enabled', true);
+        return vscode.workspace.getConfiguration('promptitude').get('enabled', true);
     }
 
     get frequency(): keyof SyncFrequency {
-        return vscode.workspace.getConfiguration('promptVault').get('frequency', 'daily');
+        return vscode.workspace.getConfiguration('promptitude').get('frequency', 'daily');
     }
 
     get customPath(): string {
-        return vscode.workspace.getConfiguration('promptVault').get('customPath', '');
+        return vscode.workspace.getConfiguration('promptitude').get('customPath', '');
     }
 
     get repositories(): string[] {
-        const repository = vscode.workspace.getConfiguration('promptVault').get<string[]>('repositories', []);
+        const repository = vscode.workspace.getConfiguration('promptitude').get<string[]>('repositories', []);
         const uniqueArray = Array.from(new Set(repository));
         if(uniqueArray.length != repository.length) {
             vscode.window.showWarningMessage('Duplicate repository URLs found in configuration. Duplicates have been removed.');
@@ -39,31 +39,31 @@ export class ConfigManager {
     }
 
     get branch(): string {
-        return vscode.workspace.getConfiguration('promptVault').get('branch', 'main');
+        return vscode.workspace.getConfiguration('promptitude').get('branch', 'main');
     }
 
     get syncOnStartup(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('syncOnStartup', true);
+        return vscode.workspace.getConfiguration('promptitude').get('syncOnStartup', true);
     }
 
     get showNotifications(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('showNotifications', true);
+        return vscode.workspace.getConfiguration('promptitude').get('showNotifications', true);
     }
 
     get debug(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('debug', false);
+        return vscode.workspace.getConfiguration('promptitude').get('debug', false);
     }
 
     get syncChatmode(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('syncChatmode', true);
+        return vscode.workspace.getConfiguration('promptitude').get('syncChatmode', true);
     }
 
     get syncInstructions(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('syncInstructions', false);
+        return vscode.workspace.getConfiguration('promptitude').get('syncInstructions', false);
     }
 
     get syncPrompt(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('syncPrompt', true);
+        return vscode.workspace.getConfiguration('promptitude').get('syncPrompt', true);
     }
 
     getSyncInterval(): number {
@@ -93,7 +93,7 @@ export class ConfigManager {
 
     onConfigurationChanged(callback: () => void): vscode.Disposable {
         return vscode.workspace.onDidChangeConfiguration(event => {
-            if (event.affectsConfiguration('promptVault')) {
+            if (event.affectsConfiguration('promptitude')) {
                 callback();
             }
         });

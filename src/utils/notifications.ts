@@ -4,7 +4,7 @@ export class NotificationManager {
     private config: vscode.WorkspaceConfiguration;
 
     constructor() {
-        this.config = vscode.workspace.getConfiguration('promptVault');
+        this.config = vscode.workspace.getConfiguration('promptitude');
     }
 
     private get showNotifications(): boolean {
@@ -48,7 +48,7 @@ export class NotificationManager {
                 'No error details available';
             await this.showInfo(details);
         } else if (result === 'Retry Failed') {
-            vscode.commands.executeCommand('promptVault.syncNow');
+            vscode.commands.executeCommand('promptitude.syncNow');
         }
     }
 
@@ -60,7 +60,7 @@ export class NotificationManager {
         );
 
         if (result === 'Retry') {
-            vscode.commands.executeCommand('promptVault.syncNow');
+            vscode.commands.executeCommand('promptitude.syncNow');
         } else if (result === 'Show Logs') {
             vscode.commands.executeCommand('workbench.action.output.show');
         }

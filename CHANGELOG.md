@@ -1,6 +1,10 @@
 # VS Code Extension Change Log
 
-All notable changes to the "prompt-vault-extension" extension will be documented in this file.
+All notable changes to the "promptitude" extension will be documented in this file.
+
+## [1.2.0] - 2025-09-22
+
+- Renamed extension to promptitude for better visibility on vscode extensions marketplace.
 
 ## [1.1.0] - 2025-09-01
 
@@ -51,16 +55,16 @@ All notable changes to the "prompt-vault-extension" extension will be documented
 
 ### Configuration Options
 
-- `promptVault.enabled` - Enable/disable automatic syncing
-- `promptVault.frequency` - Sync frequency (startup, hourly, daily, weekly, manual)
-- `promptVault.customPath` - Custom prompts directory path
-- `promptVault.repository` - Repository URL to sync from
-- `promptVault.branch` - Repository branch to sync
-- `promptVault.syncOnStartup` - Sync when VS Code starts
-- `promptVault.showNotifications` - Show sync status notifications
-- `promptVault.debug` - Enable debug logging
+- `promptitude.enabled` - Enable/disable automatic syncing
+- `promptitude.frequency` - Sync frequency (startup, hourly, daily, weekly, manual)
+- `promptitude.customPath` - Custom prompts directory path
+- `promptitude.repository` - Repository URL to sync from
+- `promptitude.branch` - Repository branch to sync
+- `promptitude.syncOnStartup` - Sync when VS Code starts
+- `promptitude.showNotifications` - Show sync status notifications
+- `promptitude.debug` - Enable debug logging
 
 ### Commands
 
-- `promptVault.syncNow` - Manually trigger sync
-- `promptVault.showStatus` - Show extension status and configuration
+- `promptitude.syncNow` - Manually trigger sync
+- `promptitude.showStatus` - Show extension status and configuration
