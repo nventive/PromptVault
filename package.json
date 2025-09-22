@@ -3,7 +3,7 @@
   "displayName": "Prompt Vault extension",
   "description": "Sync GitHub Copilot prompts, chatmodes and instructions from git repositories",
   "version": "1.2.0",
-  "publisher": "logient-nventive",
+  "publisher": "logientnventive",
   "repository": {
     "type": "git",
     "url": "https://github.com/nventive/PromptVault.git",
