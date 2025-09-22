@@ -1,4 +1,4 @@
-# Prompt Vault Extension
+# Promptitude IDE Extension
 
 > Automatically sync GitHub Copilot prompts from multiple Git repositories to your local VS Code environment.
 
@@ -28,7 +28,7 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 
 ### Installation
 
-1. Download the latest `prompt-vault-extension.vsix` file from the releases
+1. Download the latest `promptitude-extension.vsix` file from the releases
 2. Open VS Code
 3. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS) to open the command palette
 4. Type "Extensions: Install from VSIX" and select it
@@ -38,7 +38,7 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 ### First-Time Setup
 
 1. Open VS Code Settings (`Ctrl+,` or `Cmd+,`)
-2. Search for "Prompt Vault"
+2. Search for "Promptitude"
 3. Configure your preferences (optional - defaults work for most users)
 4. The extension will automatically perform an initial sync
 
@@ -48,16 +48,16 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 
 | Setting                         | Description                      | Default                                                              | Type    |
 | ------------------------------- | -------------------------------- | -------------------------------------------------------------------- | ------- |
-| `promptVault.enabled`           | Enable/disable automatic syncing | `true`                                                               | boolean |
-| `promptVault.frequency`         | Sync frequency                   | `"daily"`                                                            | string  |
-| `promptVault.customPath`        | Custom prompts directory path    | `""`                                                                 | string  |
-| `promptVault.repositories`      | List of repository URLs          | `["https://github.com/MounirAbdousNventive/prompts-logient-nventive"]` | array   |
-| `promptVault.branch`            | Repository branch to sync        | `"master"`                                                           | string  |
-| `promptVault.syncOnStartup`     | Sync when VS Code starts         | `true`                                                               | boolean |
-| `promptVault.showNotifications` | Show sync status notifications   | `true`                                                               | boolean |
-| `promptVault.syncChatmode`      | Sync chatmode prompts            | `true`                                                               | boolean |
-| `promptVault.syncInstructions`  | Sync instructions prompts        | `true`                                                               | boolean |
-| `promptVault.syncPrompt`        | Sync prompt files                | `true`                                                               | boolean |
+| `promptitude.enabled`           | Enable/disable automatic syncing | `true`                                                               | boolean |
+| `promptitude.frequency`         | Sync frequency                   | `"daily"`                                                            | string  |
+| `promptitude.customPath`        | Custom prompts directory path    | `""`                                                                 | string  |
+| `promptitude.repositories`      | List of repository URLs          | `[]`                                                                 | array   |
+| `promptitude.branch`            | Repository branch to sync        | `"main"`                                                             | string  |
+| `promptitude.syncOnStartup`     | Sync when VS Code starts         | `true`                                                               | boolean |
+| `promptitude.showNotifications` | Show sync status notifications   | `true`                                                               | boolean |
+| `promptitude.syncChatmode`      | Sync chatmode prompts            | `true`                                                               | boolean |
+| `promptitude.syncInstructions`  | Sync instructions prompts        | `false`                                                              | boolean |
+| `promptitude.syncPrompt`        | Sync prompt files                | `true`                                                               | boolean |
 
 ### Sync Frequency Options
 
@@ -75,7 +75,7 @@ The extension automatically detects the correct prompts directory for your opera
 - **Windows**: `%APPDATA%\Code\User\prompts`
 - **Linux**: `~/.config/Code/User/prompts`
 
-You can override this by setting a custom path in `promptVault.customPath`.
+You can override this by setting a custom path in `promptitude.customPath`.
 
 ### Multiple Repository Configuration
 
@@ -85,13 +85,13 @@ The extension supports syncing from multiple Git repositories simultaneously. Th
 
 1. **Using VS Code Settings UI**:
    - Open Settings (`Ctrl+,` or `Cmd+,`)
-   - Search for "promptVault.repositories"
+   - Search for "promptitude.repositories"
    - Click "Add Item" to add each repository URL
 
 2. **Using JSON Configuration**:
    ```json
    {
-     "promptVault.repositories": [
+     "promptitude.repositories": [
        "https://github.com/your-org/prompts-main",
        "https://github.com/your-org/prompts-experimental",
        "https://github.com/another-org/shared-prompts"
@@ -188,7 +188,7 @@ All files are placed directly in the `User/prompts/` directory, removing any sub
 Enable debug logging:
 
 1. Open VS Code Settings
-2. Search for "promptVault.debug"
+2. Search for "promptitude.debug"
 3. Enable debug mode
 4. Check the "Prompts Sync" output channel for detailed logs
 
@@ -206,8 +206,7 @@ Enable debug logging:
 
 ```bash
 # Clone the repository
-git clone https://github.com/MounirAbdousNventive/prompts-logient-nventive.git
-cd prompts-logient-nventive/tools/vscode-extension
+git clone <url>
 
 # Install dependencies
 npm install
@@ -272,7 +271,7 @@ We welcome contributions to improve the extension! Please see our [Contribution 
 ### Version 1.2.0 (Multiple Repository Support)
 
 - ✅ **New Feature**: Support for syncing from multiple Git repositories
-- ✅ Added `promptVault.repositories` array setting for multiple repository URLs
+- ✅ Added `promptitude.repositories` array setting for multiple repository URLs
 - ✅ Enhanced error handling for repository conflicts and failures
 - ✅ Improved status display showing multi-repository sync results
 - ✅ Graceful handling of partial sync success scenarios
@@ -282,9 +281,9 @@ We welcome contributions to improve the extension! Please see our [Contribution 
 ### Version 1.1.0 (Selective Sync & Flattened Structure)
 
 - ✅ **New Feature**: Selective sync settings for different prompt types
-- ✅ Added `promptVault.syncChatmode` setting (default: true)
-- ✅ Added `promptVault.syncInstructions` setting (default: true)
-- ✅ Added `promptVault.syncPrompt` setting (default: true)
+- ✅ Added `promptitude.syncChatmode` setting (default: true)
+- ✅ Added `promptitude.syncInstructions` setting (default: true)
+- ✅ Added `promptitude.syncPrompt` setting (default: true)
 - ✅ Flattened folder structure - all files sync directly to `User/prompts/`
 - ✅ Enhanced status display showing selected sync types
 - ✅ Improved configurability and user control
@@ -301,7 +300,7 @@ We welcome contributions to improve the extension! Please see our [Contribution 
 
 ## 📄 License
 
-Internal use only - Logient/Nventive Development Team
+Apache 2.0
 
 ## 📞 Support
 
@@ -313,4 +312,4 @@ For support and questions:
 
 ---
 
-**Made with ❤️ by the Logient-Nventive DevOps Team**
+**Made with ❤️ by the Logient-nventive Team**

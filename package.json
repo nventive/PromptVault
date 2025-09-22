@@ -1,12 +1,12 @@
 {
-  "name": "prompt-vault-extension",
-  "displayName": "Prompt Vault extension",
+  "name": "promptitude-extension",
+  "displayName": "Promptitude",
   "description": "Sync GitHub Copilot prompts, chatmodes and instructions from git repositories",
   "version": "1.2.0",
   "publisher": "logientnventive",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nventive/PromptVault.git",
+    "url": "https://github.com/nventive/promptitude.git",
     "directory": "tools/vscode-extension"
   },
   "engines": {
@@ -21,14 +21,14 @@
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Prompt Vault",
+      "title": "Promptitude",
       "properties": {
-        "promptVault.enabled": {
+        "promptitude.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable automatic synchronization"
         },
-        "promptVault.frequency": {
+        "promptitude.frequency": {
           "type": "string",
           "enum": [
             "startup",
@@ -40,12 +40,12 @@
           "default": "daily",
           "description": "Frequency of automatic sync"
         },
-        "promptVault.customPath": {
+        "promptitude.customPath": {
           "type": "string",
           "default": "",
           "description": "Custom prompts directory path (leave empty for default)"
         },
-        "promptVault.repositories": {
+        "promptitude.repositories": {
           "type": "array",
           "items": {
             "type": "string"
@@ -54,40 +54,40 @@
           "description": "List of repository URLs to sync from",
           "order": 0
         },
-        "promptVault.branch": {
+        "promptitude.branch": {
           "type": "string",
           "default": "main",
           "description": "Repository branch to sync",
           "order": 10
         },
-        "promptVault.syncOnStartup": {
+        "promptitude.syncOnStartup": {
           "type": "boolean",
           "default": true,
           "description": "Sync when Visual Studio Code starts"
         },
-        "promptVault.showNotifications": {
+        "promptitude.showNotifications": {
           "type": "boolean",
           "default": true,
           "description": "Show sync status notifications"
         },
-        "promptVault.debug": {
+        "promptitude.debug": {
           "type": "boolean",
           "default": false,
           "description": "Enable debug logging"
         },
-        "promptVault.syncChatmode": {
+        "promptitude.syncChatmode": {
           "type": "boolean",
           "default": true,
           "description": "Sync chatmodes",
           "order": 2
         },
-        "promptVault.syncInstructions": {
+        "promptitude.syncInstructions": {
           "type": "boolean",
           "default": false,
           "description": "Sync instructions",
           "order": 3
         },
-        "promptVault.syncPrompt": {
+        "promptitude.syncPrompt": {
           "type": "boolean",
           "default": true,
           "description": "Sync prompts",
@@ -97,14 +97,14 @@
     },
     "commands": [
       {
-        "command": "promptVault.syncNow",
+        "command": "promptitude.syncNow",
         "title": "Sync Now",
-        "category": "Prompt Vault"
+        "category": "Promptitude"
       },
       {
-        "command": "promptVault.showStatus",
+        "command": "promptitude.showStatus",
         "title": "Show Status",
-        "category": "Prompt Vault"
+        "category": "Promptitude"
       }
     ]
   },

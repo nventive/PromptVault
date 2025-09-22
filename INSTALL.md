@@ -7,14 +7,14 @@
 1. **Install the extension:**
 
    ```bash
-   code --install-extension prompt-vault-extension-1.0.0.vsix
+   code --install-extension promptitude-extension-1.0.0.vsix
    ```
 
 2. **Or install via VS Code UI:**
    - Open VS Code
    - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS)
    - Type "Extensions: Install from VSIX"
-   - Select the `prompt-vault-extension.vsix` file
+   - Select the `promptitude-extension.vsix` file
 
 ### Option 2: Development Mode
 
@@ -32,29 +32,29 @@
 
 2. **Configure Extension (Optional):**
    - Go to Settings (`Ctrl+,`)
-   - Search for "Prompt Vault"
+   - Search for "Promptitude"
    - Add a git repository to sync prompts from.
    - Adjust settings as needed
 
 ### 2. Test Manual Sync
 
 1. **Open Command Palette** (`Ctrl+Shift+P`)
-2. **Type:** "Prompt Vault: Sync Now"
+2. **Type:** "Promptitude: Sync Now"
 3. **Check status bar** for sync progress indicators
 4. **Verify prompts directory** was created and populated
 
 ### 3. Test Status Display
 
 1. **Open Command Palette** (`Ctrl+Shift+P`)
-2. **Type:** "Prompt Vault: Show Status"
+2. **Type:** "Promptitude: Show Status"
 3. **Review configuration** and status information
 
 ### 4. Check Debug Logs
 
 1. **Enable debug mode:**
-   - Settings → Search "promptVault.debug" → Enable
+   - Settings → Search "promptitude.debug" → Enable
 2. **View logs:**
-   - View → Output → Select "Prompt Vault" channel
+   - View → Output → Select "Promptitude" channel
 
 ## Expected Behavior
 
@@ -103,10 +103,10 @@
 
 ```bash
 # Check if extension is loaded
-code --list-extensions | grep prompt-vault
+code --list-extensions | grep promptitude
 
 # View extension logs
-# Open VS Code → View → Output → Select "Prompt Vault"
+# Open VS Code → View → Output → Select "Promptitude"
 
 # Reset extension data
 # Close VS Code, delete prompts directory, restart VS Code
@@ -125,10 +125,10 @@ npm run watch
 npx @vscode/vsce package
 
 # Install locally
-code --install-extension prompt-vault-extension-<version>.vsix
+code --install-extension promptitude-extension-<version>.vsix
 
 # Uninstall
-code --uninstall-extension logient-nventive.prompt-vault-extension
+code --uninstall-extension logient-nventive.promptitude-extension
 ```
 
 ## Extension Structure Verification

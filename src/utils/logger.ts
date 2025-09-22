@@ -8,7 +8,7 @@ export class Logger {
     }
 
     private get isDebugEnabled(): boolean {
-        return vscode.workspace.getConfiguration('promptVault').get('debug', false);
+        return vscode.workspace.getConfiguration('promptitude').get('debug', false);
     }
 
     private log(level: string, message: string): void {

@@ -17,11 +17,11 @@ export function activate(context: vscode.ExtensionContext) {
     syncManager = new SyncManager(configManager, statusBarManager, logger);
 
     // Register commands
-    const syncNowCommand = vscode.commands.registerCommand('promptVault.syncNow', async () => {
+    const syncNowCommand = vscode.commands.registerCommand('promptitude.syncNow', async () => {
         await syncManager.syncNow();
     });
 
-    const showStatusCommand = vscode.commands.registerCommand('promptVault.showStatus', async () => {
+    const showStatusCommand = vscode.commands.registerCommand('promptitude.showStatus', async () => {
         await syncManager.showStatus();
     });
 
