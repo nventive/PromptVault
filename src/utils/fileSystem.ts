@@ -61,6 +61,21 @@ export class FileSystemManager {
     async copyFile(source: string, destination: string): Promise<void> {
         const content = await this.readFileContent(source);
         await this.writeFileContent(destination, content);
+    }   
+
+    async calculateFileHash(content: string): Promise<string> {
+        // GitHub uses the following format: `blob ${content.length}\0${content}`
+        const blobPrefix = `blob ${Buffer.from(content).length}\0`;
+        const fullContent = blobPrefix + content;
+        
+        const encoder = new TextEncoder();
+        const data = encoder.encode(fullContent);
+        const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+        
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        return hashHex;
     }
 
     getRelativePath(from: string, to: string): string {

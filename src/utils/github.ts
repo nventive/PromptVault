@@ -111,6 +111,28 @@ export class GitHubApiManager {
         throw new Error('No content found in file');
     }
 
+    async getFileHash(owner: string, repo: string, path: string, branch: string = 'master'): Promise<string> {
+        const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
+        if (!session) {
+            throw new Error('GitHub authentication required');
+        }
+
+        const response = await fetch(`${this.baseUrl}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
+            headers: {
+                'Authorization': `Bearer ${session.accessToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'VS Code Prompts Sync Extension'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get file hash: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.sha;
+    }
+
     parseRepositoryUrl(url: string): { owner: string; repo: string } {
         // Handle different GitHub URL formats
         const patterns = [
