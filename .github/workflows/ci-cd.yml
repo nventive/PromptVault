@@ -58,7 +58,7 @@ jobs:
       - name: Deploy to Marketplace
         run: |
           echo "Deploying to the marketplace..."
-          # Publish pre-built VSIX using the maintained @vscode/vsce package
+          # Publish pre-built VSIX using the @vscode/vsce package
           FILE=$(ls -1 *.vsix | head -n 1)
           echo "Publishing $FILE"
           if [ -z "${VSCE_PAT}" ]; then
