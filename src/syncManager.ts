@@ -166,7 +166,7 @@ export class SyncManager {
         });
     }
 
-    private async syncFiles(owner: string, repo: string, files: GitHubTreeItem[]): Promise<number> {
+    private async syncFiles(owner: string, repo: string, files: GitHubTreeItem[], branch: string): Promise<number> {
         const promptsDir = this.config.getPromptsDirectory();
         await this.fileSystem.ensureDirectoryExists(promptsDir);
         
@@ -177,11 +177,11 @@ export class SyncManager {
             let content = null;
 
             try {
-                content = await this.github.getFileContent(owner, repo, file.path, this.config.branch);
+                content = await this.github.getFileContent(owner, repo, file.path, branch);
             } catch (error) {
-                // An error occured will retrieving file content, Return here
+                // An error occurred while retrieving file content, Return here
                 this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
-                this.notifications.showSyncError(`Failed to fetch content for ${file.path}: ${error}. Make sure that the correct is set. Current branch: ${this.config.branch}`);
+                this.notifications.showSyncError(`Failed to fetch content for ${file.path} branch:${branch}: ${error}.`);
                 return itemsUpdated;
             }
 
@@ -219,16 +219,20 @@ export class SyncManager {
         let totalItemsUpdated = 0;
         const errors: string[] = [];
 
-        for (const repoUrl of repositories) {
+        const repoConfigs = this.config.repositoryConfigs;
+
+        for (const entry of repoConfigs) {
+            const repoUrl = entry.url;
+            const branch = entry.branch;
             try {
                 this.logger.debug(`Syncing repository: ${repoUrl}`);
                 
                 // Parse repository URL
                 const { owner, repo } = this.github.parseRepositoryUrl(repoUrl);
-                this.logger.debug(`Syncing from ${owner}/${repo} branch ${this.config.branch}`);
+                this.logger.debug(`Syncing from ${owner}/${repo} branch ${branch}`);
 
                 // Get repository tree
-                const tree = await this.github.getRepositoryTree(owner, repo, this.config.branch);
+                const tree = await this.github.getRepositoryTree(owner, repo, branch);
                 this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
 
                 // Filter relevant files
@@ -249,7 +253,7 @@ export class SyncManager {
                 this.logger.debug(`Found ${relevantFiles.length} relevant files to sync for ${repoUrl}`);
 
                 // Sync files
-                const itemsUpdated = await this.syncFiles(owner, repo, relevantFiles);
+                const itemsUpdated = await this.syncFiles(owner, repo, relevantFiles, branch);
                 
                 results.push({
                     repository: repoUrl,
@@ -338,13 +342,14 @@ export class SyncManager {
         }
 
         const repositories = this.config.repositories;
+        const repoConfigs = this.config.repositoryConfigs;
         
         const items = [
             'Sync Status',
             '──────────',
             `Enabled: ${this.config.enabled ? '✅' : '❌'}`,
             `Frequency: ${this.config.frequency}`,
-            `Branch: ${this.config.branch}`,
+            `Branches: ${repoConfigs.length > 0 ? repoConfigs.map(rc => rc.branch).join(', ') : 'main'}`,
             `Prompts Directory: ${this.config.getPromptsDirectory()}`,
             `Sync on Startup: ${this.config.syncOnStartup ? '✅' : '❌'}`,
             `Show Notifications: ${this.config.showNotifications ? '✅' : '❌'}`,
@@ -356,8 +361,8 @@ export class SyncManager {
         ];
 
         // Add each repository
-        repositories.forEach((repo, index) => {
-            items.push(`${index + 1}. ${repo}`);
+        repoConfigs.forEach((rc, index) => {
+            items.push(`${index + 1}. ${rc.url} (branch: ${rc.branch})`);
         });
 
         items.push(

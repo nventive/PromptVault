@@ -51,8 +51,7 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 | `promptitude.enabled`           | Enable/disable automatic syncing | `true`                                                               | boolean |
 | `promptitude.frequency`         | Sync frequency                   | `"daily"`                                                            | string  |
 | `promptitude.customPath`        | Custom prompts directory path    | `""`                                                                 | string  |
-| `promptitude.repositories`      | List of repository URLs          | `[]`                                                                 | array   |
-| `promptitude.branch`            | Repository branch to sync        | `"main"`                                                             | string  |
+| `promptitude.repositories`      | Repositories with optional branch (use `url` or `url|branch`) | `[]`                                                                 | array   |
 | `promptitude.syncOnStartup`     | Sync when VS Code starts         | `true`                                                               | boolean |
 | `promptitude.showNotifications` | Show sync status notifications   | `true`                                                               | boolean |
 | `promptitude.syncChatmode`      | Sync chatmode prompts            | `true`                                                               | boolean |
@@ -81,22 +80,24 @@ You can override this by setting a custom path in `promptitude.customPath`.
 
 The extension supports syncing from multiple Git repositories simultaneously. This is useful for organizations that maintain prompt collections across multiple repositories or for users who want to combine prompts from different sources.
 
-#### Setting up Multiple Repositories
+#### Setting up Multiple Repositories (with optional per-repo branch)
 
 1. **Using VS Code Settings UI**:
    - Open Settings (`Ctrl+,` or `Cmd+,`)
-   - Search for "promptitude.repositories"
-   - Click "Add Item" to add each repository URL
+    - Search for "promptitude.repositories"
+    - Click "Add Item" to add each repository using one of the following formats:
+       - `https://github.com/your-org/prompts` (defaults to branch `main`)
+       - `https://github.com/your-org/prompts|develop` (explicit branch)
 
 2. **Using JSON Configuration**:
    ```json
-   {
-     "promptitude.repositories": [
-       "https://github.com/your-org/prompts-main",
-       "https://github.com/your-org/prompts-experimental",
-       "https://github.com/another-org/shared-prompts"
-     ]
-   }
+    {
+       "promptitude.repositories": [
+          "https://github.com/your-org/prompts",
+          "https://github.com/your-org/prompts|develop",
+          "https://github.com/another-org/shared-prompts|release"
+       ]
+    }
    ```
 
 #### Error Handling
@@ -268,35 +269,9 @@ We welcome contributions to improve the extension! Please see our [Contribution 
 
 ## 📋 Changelog
 
-### Version 1.2.0 (Multiple Repository Support)
+For the complete release history, detailed changes, and migration notes, please refer to the project's changelog:
 
-- ✅ **New Feature**: Support for syncing from multiple Git repositories
-- ✅ Added `promptitude.repositories` array setting for multiple repository URLs
-- ✅ Enhanced error handling for repository conflicts and failures
-- ✅ Improved status display showing multi-repository sync results
-- ✅ Graceful handling of partial sync success scenarios
-- ✅ Backward compatibility with single repository configuration
-- ✅ Updated documentation with multi-repository setup instructions
-
-### Version 1.1.0 (Selective Sync & Flattened Structure)
-
-- ✅ **New Feature**: Selective sync settings for different prompt types
-- ✅ Added `promptitude.syncChatmode` setting (default: true)
-- ✅ Added `promptitude.syncInstructions` setting (default: true)
-- ✅ Added `promptitude.syncPrompt` setting (default: true)
-- ✅ Flattened folder structure - all files sync directly to `User/prompts/`
-- ✅ Enhanced status display showing selected sync types
-- ✅ Improved configurability and user control
-
-### Version 1.0.0 (Initial Release)
-
-- ✅ Basic sync functionality
-- ✅ Configurable sync frequency
-- ✅ Cross-platform support
-- ✅ GitHub authentication integration
-- ✅ Status bar integration
-- ✅ User notifications
-- ✅ Manual sync commands
+[See CHANGELOG.md](./CHANGELOG.md)
 
 ## 📄 License
 

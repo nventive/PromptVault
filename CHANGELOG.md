@@ -2,6 +2,13 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
+## [1.3.0] - 2025-09-25
+
+### Changed
+
+- Configuration now supports per-repository branch selection via `promptitude.repositories` entries in the form `https://github.com/owner/repo|branch`.
+- **Breaking** Removed the separate `promptitude.branch` setting. If no branch is provided for an entry, `main` is used by default.
+
 ## [1.2.0] - 2025-09-22
 
 - Renamed extension to promptitude for better visibility on vscode extensions marketplace.
