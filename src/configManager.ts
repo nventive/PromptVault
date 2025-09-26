@@ -31,15 +31,26 @@ export class ConfigManager {
 
     get repositories(): string[] {
         const repository = vscode.workspace.getConfiguration('promptitude').get<string[]>('repositories', []);
-        const uniqueArray = Array.from(new Set(repository));
-        if(uniqueArray.length != repository.length) {
+        const sanitized = repository
+            .map(r => (r ?? '').trim())
+            .filter(r => r.length > 0);
+        const uniqueArray = Array.from(new Set(sanitized));
+        if (uniqueArray.length !== repository.length) {
             vscode.window.showWarningMessage('Duplicate repository URLs found in configuration. Duplicates have been removed.');
         }
         return uniqueArray;
     }
 
-    get branch(): string {
-        return vscode.workspace.getConfiguration('promptitude').get('branch', 'main');
+    /**
+     * Returns repositories with their associated branch. The repositories setting accepts
+     * entries in the form "https://github.com/owner/repo" or "https://github.com/owner/repo|branch".
+     * If no branch is specified, defaults to "main".
+     */
+    get repositoryConfigs(): { url: string; branch: string }[] {
+        return this.repositories.map(entry => {
+            const [url, branch] = entry.split('|');
+            return { url, branch: (branch && branch.trim()) ? branch.trim() : 'main' };
+        });
     }
 
     get syncOnStartup(): boolean {
