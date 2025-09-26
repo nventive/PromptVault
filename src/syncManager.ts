@@ -408,7 +408,6 @@ export class SyncManager {
             this.logger.info(`Opened prompts folder: ${promptsDir}`);
             
             // Show info message
-            await this.notifications.showInfo(`Opened prompts folder: ${promptsDir}`);
             
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
