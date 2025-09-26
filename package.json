@@ -100,6 +100,11 @@
         "command": "promptitude.showStatus",
         "title": "Show Status",
         "category": "Promptitude"
+      },
+      {
+        "command": "promptitude.openPromptsFolder",
+        "title": "Open Prompts Folder",
+        "category": "Promptitude"
       }
     ]
   },

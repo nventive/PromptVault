@@ -25,9 +25,14 @@ export function activate(context: vscode.ExtensionContext) {
         await syncManager.showStatus();
     });
 
+    const openPromptsFolderCommand = vscode.commands.registerCommand('promptitude.openPromptsFolder', async () => {
+        await syncManager.openPromptsFolder();
+    });
+
     // Add to subscriptions
     context.subscriptions.push(syncNowCommand);
     context.subscriptions.push(showStatusCommand);
+    context.subscriptions.push(openPromptsFolderCommand);
     context.subscriptions.push(statusBarManager);
 
     // Initialize sync manager

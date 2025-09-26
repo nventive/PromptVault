@@ -394,6 +394,28 @@ export class SyncManager {
         quickPick.show();
     }
 
+    async openPromptsFolder(): Promise<void> {
+        try {
+            const promptsDir = this.config.getPromptsDirectory();
+            
+            // Ensure directory exists
+            await this.fileSystem.ensureDirectoryExists(promptsDir);
+            
+            // Open folder in system file explorer
+            const folderUri = vscode.Uri.file(promptsDir);
+            await vscode.commands.executeCommand('revealFileInOS', folderUri);
+            
+            this.logger.info(`Opened prompts folder: ${promptsDir}`);
+            
+            // Show info message
+            
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            this.logger.error('Failed to open prompts folder', error instanceof Error ? error : undefined);
+            await this.notifications.showError(`Failed to open prompts folder: ${errorMessage}`);
+        }
+    }
+
     dispose(): void {
         this.logger.info('Disposing SyncManager...');
         
