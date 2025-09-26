@@ -179,7 +179,7 @@ export class SyncManager {
             try {
                 content = await this.github.getFileContent(owner, repo, file.path, branch);
             } catch (error) {
-                // An error occured will retrieving file content, Return here
+                // An error occurred while retrieving file content, Return here
                 this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
                 this.notifications.showSyncError(`Failed to fetch content for ${file.path} branch:${branch}: ${error}.`);
                 return itemsUpdated;
