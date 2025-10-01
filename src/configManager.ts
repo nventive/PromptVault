@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { GitProviderFactory } from './utils/gitProviderFactory';
+import { GitProvider } from './utils/gitProvider';
 
 export interface SyncFrequency {
     startup: number;
@@ -43,7 +45,7 @@ export class ConfigManager {
 
     /**
      * Returns repositories with their associated branch. The repositories setting accepts
-     * entries in the form "https://github.com/owner/repo" or "https://github.com/owner/repo|branch".
+     * entries in the form "https://github.com/owner/repo", "https://dev.azure.com/org/project/_git/repo", or with branch "repo_url|branch".
      * If no branch is specified, defaults to "main".
      */
     get repositoryConfigs(): { url: string; branch: string }[] {
@@ -108,5 +110,62 @@ export class ConfigManager {
                 callback();
             }
         });
+    }
+
+    /**
+     * Get the set of unique Git providers used in the configured repositories
+     */
+    getUsedProviders(): Set<GitProvider> {
+        const providers = new Set<GitProvider>();
+        
+        for (const repo of this.repositories) {
+            try {
+                const provider = GitProviderFactory.detectProvider(repo);
+                if (provider !== 'unknown') {
+                    providers.add(provider);
+                }
+            } catch {
+                // Ignore invalid URLs
+            }
+        }
+        
+        return providers;
+    }
+
+    /**
+     * Check if any configured repositories use GitHub
+     */
+    hasGitHubRepositories(): boolean {
+        return this.getUsedProviders().has('github');
+    }
+
+    /**
+     * Check if any configured repositories use Azure DevOps
+     */
+    hasAzureDevOpsRepositories(): boolean {
+        return this.getUsedProviders().has('azure');
+    }
+
+    /**
+     * Get repositories grouped by provider
+     */
+    getRepositoriesByProvider(): Map<GitProvider, string[]> {
+        const providerMap = new Map<GitProvider, string[]>();
+        
+        for (const repo of this.repositories) {
+            try {
+                const provider = GitProviderFactory.detectProvider(repo);
+                if (provider !== 'unknown') {
+                    if (!providerMap.has(provider)) {
+                        providerMap.set(provider, []);
+                    }
+                    providerMap.get(provider)!.push(repo);
+                }
+            } catch {
+                // Ignore invalid URLs
+            }
+        }
+        
+        return providerMap;
     }
 }

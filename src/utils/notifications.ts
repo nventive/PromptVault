@@ -1,10 +1,16 @@
 import * as vscode from 'vscode';
+import { ConfigManager } from '../configManager';
+import { AzureDevOpsApiManager } from './azureDevOps';
 
 export class NotificationManager {
     private config: vscode.WorkspaceConfiguration;
+    private configManager?: ConfigManager;
+    private extensionContext?: vscode.ExtensionContext;
 
-    constructor() {
+    constructor(configManager?: ConfigManager, extensionContext?: vscode.ExtensionContext) {
         this.config = vscode.workspace.getConfiguration('promptitude');
+        this.configManager = configManager;
+        this.extensionContext = extensionContext;
     }
 
     private get showNotifications(): boolean {
@@ -53,16 +59,30 @@ export class NotificationManager {
     }
 
     async showSyncError(error: string): Promise<void> {
-        const result = await this.showError(
-            `❌ Failed to sync prompts: ${error}`,
-            'Retry',
-            'Show Logs'
-        );
+        // Enhanced error handling for Azure DevOps specific errors
+        let message = `❌ Failed to sync prompts: ${error}`;
+        let actions = ['Retry', 'Show Logs'];
+        
+        // Check for specific Azure DevOps authentication errors in the error message
+        if (error.includes('400') && error.includes('Azure DevOps')) {
+            message = `❌ Azure DevOps sync failed with 400 Bad Request. This usually indicates authentication or configuration issues.`;
+            actions = ['Update Azure DevOps PAT', 'Retry', 'Show Logs'];
+        } else if (error.includes('401') && error.includes('Azure DevOps')) {
+            message = `❌ Azure DevOps authentication failed. Your Personal Access Token may be invalid or expired.`;
+            actions = ['Update Azure DevOps PAT', 'Retry', 'Show Logs'];
+        } else if (error.includes('403') && error.includes('Azure DevOps')) {
+            message = `❌ Azure DevOps access forbidden. Please check your PAT permissions.`;
+            actions = ['Update Azure DevOps PAT', 'Retry', 'Show Logs'];
+        }
+        
+        const result = await this.showError(message, ...actions);
 
         if (result === 'Retry') {
             vscode.commands.executeCommand('promptitude.syncNow');
         } else if (result === 'Show Logs') {
             vscode.commands.executeCommand('workbench.action.output.show');
+        } else if (result === 'Update Azure DevOps PAT') {
+            vscode.commands.executeCommand('promptitude.updateAzureDevOpsPAT');
         }
     }
 
@@ -71,13 +91,76 @@ export class NotificationManager {
     }
 
     async showAuthenticationRequired(): Promise<void> {
-        const result = await this.showWarning(
-            'GitHub authentication required to sync prompts.',
-            'Sign In'
-        );
+        // If we don't have access to the config manager, fall back to generic message
+        if (!this.configManager) {
+            await this.showWarning(
+                'Git authentication required to sync prompts. Please check the extension output for authentication prompts.',
+            );
+            return;
+        }
 
-        if (result === 'Sign In') {
-            vscode.commands.executeCommand('github.signin');
+        const usedProviders = this.configManager.getUsedProviders();
+        const hasGitHub = usedProviders.has('github');
+        const hasAzure = usedProviders.has('azure');
+
+        // Build appropriate message and actions based on the providers in use
+        let message = 'Git authentication required to sync prompts.';
+        const actions: string[] = [];
+
+        if (hasGitHub && hasAzure) {
+            message = 'GitHub and Azure DevOps authentication required to sync prompts.';
+            actions.push('Sign in to GitHub', 'Setup Azure DevOps');
+        } else if (hasGitHub) {
+            message = 'GitHub authentication required to sync prompts.';
+            actions.push('Sign in to GitHub');
+        } else if (hasAzure) {
+            message = 'Azure DevOps authentication required to sync prompts.';
+            actions.push('Setup Azure DevOps');
+        }
+
+        // Always provide the "Show Logs" option for troubleshooting
+        actions.push('Show Logs');
+
+        const result = await this.showWarning(message, ...actions);
+
+        // Handle the user's choice
+        if (result === 'Sign in to GitHub') {
+            await this.handleGitHubSignIn();
+        } else if (result === 'Setup Azure DevOps') {
+            await this.handleAzureDevOpsSetup();
+        } else if (result === 'Show Logs') {
+            vscode.commands.executeCommand('workbench.action.output.show');
+        }
+    }
+
+    private async handleGitHubSignIn(): Promise<void> {
+        try {
+            // Use VS Code's built-in GitHub authentication
+            await vscode.commands.executeCommand('github.signin');
+        } catch (error) {
+            await this.showError('Failed to initiate GitHub sign-in. Please try signing in manually through VS Code settings.');
+        }
+    }
+
+    private async handleAzureDevOpsSetup(): Promise<void> {
+        if (!this.extensionContext) {
+            await this.showError('Extension context not available for Azure DevOps setup.');
+            return;
+        }
+
+        try {
+            // Create an Azure DevOps manager and trigger authentication
+            const azureManager = new AzureDevOpsApiManager(this.extensionContext);
+            const success = await azureManager.requestAuthentication();
+            
+            if (success) {
+                await this.showInfo('✅ Azure DevOps Personal Access Token configured successfully!');
+            } else {
+                await this.showWarning('Azure DevOps setup was cancelled. You can retry later.');
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            await this.showError(`Failed to setup Azure DevOps authentication: ${errorMessage}`);
         }
     }
 }

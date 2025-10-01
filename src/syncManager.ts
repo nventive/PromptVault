@@ -3,8 +3,10 @@ import { ConfigManager } from './configManager';
 import { StatusBarManager, SyncStatus } from './statusBarManager';
 import { Logger } from './utils/logger';
 import { NotificationManager } from './utils/notifications';
-import { GitHubApiManager, GitHubTreeItem } from './utils/github';
+import { GitApiManager, GitTreeItem } from './utils/gitProvider';
+import { GitProviderFactory } from './utils/gitProviderFactory';
 import { FileSystemManager } from './utils/fileSystem';
+import { AzureDevOpsApiManager } from './utils/azureDevOps';
 import { REPO_SYNC_CHAT_MODE_PATH, REPO_SYNC_INSTRUCTIONS_PATH, REPO_SYNC_PROMPT_PATH,  } from './constant';
 export interface SyncResult {
     success: boolean;
@@ -31,21 +33,24 @@ export class SyncManager {
     private isInitialized = false;
     private context: vscode.ExtensionContext | null = null;
     private notifications: NotificationManager;
-    private github: GitHubApiManager;
     private fileSystem: FileSystemManager;
+    private gitProviders: Map<string, GitApiManager> = new Map();
 
     constructor(
         private config: ConfigManager,
         private statusBar: StatusBarManager,
         private logger: Logger
     ) {
-        this.notifications = new NotificationManager();
-        this.github = new GitHubApiManager();
+        this.notifications = new NotificationManager(this.config);
         this.fileSystem = new FileSystemManager();
     }
 
     async initialize(context: vscode.ExtensionContext): Promise<void> {
         this.context = context;
+        
+        // Update notification manager with extension context
+        this.notifications = new NotificationManager(this.config, this.context);
+        
         this.logger.info('Initializing SyncManager...');
 
         // Listen for configuration changes
@@ -79,19 +84,6 @@ export class SyncManager {
         this.statusBar.setStatus(SyncStatus.Syncing, 'Syncing...');
 
         try {
-            // Check authentication
-            const isAuthenticated = await this.github.checkAuthentication();
-            if (!isAuthenticated) {
-                this.logger.warn('GitHub authentication required');
-                await this.notifications.showAuthenticationRequired();
-                
-                // Try to authenticate
-                const authSuccess = await this.github.requestAuthentication();
-                if (!authSuccess) {
-                    throw new Error('GitHub authentication failed');
-                }
-            }
-
             const repositories = this.config.repositories;
             this.logger.info(`Syncing from ${repositories.length} repositories`);
 
@@ -135,7 +127,7 @@ export class SyncManager {
         }
     }
 
-    private filterRelevantFiles(tree: GitHubTreeItem[]): GitHubTreeItem[] {
+    private filterRelevantFiles(tree: GitTreeItem[]): GitTreeItem[] {
         const allowedPaths: string[] = [];
         
         // Build list of allowed paths based on settings
@@ -166,7 +158,7 @@ export class SyncManager {
         });
     }
 
-    private async syncFiles(owner: string, repo: string, files: GitHubTreeItem[], branch: string): Promise<number> {
+    private async syncFiles(gitApi: GitApiManager, owner: string, repo: string, files: GitTreeItem[], branch: string): Promise<number> {
         const promptsDir = this.config.getPromptsDirectory();
         await this.fileSystem.ensureDirectoryExists(promptsDir);
         
@@ -177,7 +169,7 @@ export class SyncManager {
             let content = null;
 
             try {
-                content = await this.github.getFileContent(owner, repo, file.path, branch);
+                content = await gitApi.getFileContent(owner, repo, file.path, branch);
             } catch (error) {
                 // An error occurred while retrieving file content, Return here
                 this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
@@ -227,12 +219,35 @@ export class SyncManager {
             try {
                 this.logger.debug(`Syncing repository: ${repoUrl}`);
                 
+                // Get or create Git API manager for this repository
+                let gitApi = this.gitProviders.get(repoUrl);
+                if (!gitApi) {
+                    if (!this.context) {
+                        throw new Error('Extension context not available for git provider initialization');
+                    }
+                    gitApi = GitProviderFactory.createFromUrl(repoUrl, this.context);
+                    this.gitProviders.set(repoUrl, gitApi);
+                }
+
+                // Check authentication for this provider
+                const isAuthenticated = await gitApi.checkAuthentication();
+                if (!isAuthenticated) {
+                    this.logger.warn(`${gitApi.getProviderName()} authentication required for ${repoUrl}`);
+                    await this.notifications.showAuthenticationRequired();
+                    
+                    // Try to authenticate
+                    const authSuccess = await gitApi.requestAuthentication();
+                    if (!authSuccess) {
+                        throw new Error(`${gitApi.getProviderName()} authentication failed`);
+                    }
+                }
+                
                 // Parse repository URL
-                const { owner, repo } = this.github.parseRepositoryUrl(repoUrl);
+                const { owner, repo } = gitApi.parseRepositoryUrl(repoUrl);
                 this.logger.debug(`Syncing from ${owner}/${repo} branch ${branch}`);
 
                 // Get repository tree
-                const tree = await this.github.getRepositoryTree(owner, repo, branch);
+                const tree = await gitApi.getRepositoryTree(owner, repo, branch);
                 this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
 
                 // Filter relevant files
@@ -253,7 +268,7 @@ export class SyncManager {
                 this.logger.debug(`Found ${relevantFiles.length} relevant files to sync for ${repoUrl}`);
 
                 // Sync files
-                const itemsUpdated = await this.syncFiles(owner, repo, relevantFiles, branch);
+                const itemsUpdated = await this.syncFiles(gitApi, owner, repo, relevantFiles, branch);
                 
                 results.push({
                     repository: repoUrl,
@@ -344,6 +359,29 @@ export class SyncManager {
         const repositories = this.config.repositories;
         const repoConfigs = this.config.repositoryConfigs;
         
+        // Check authentication status for different providers
+        const usedProviders = this.config.getUsedProviders();
+        const authStatus: string[] = [];
+        
+        if (usedProviders.has('github')) {
+            try {
+                const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
+                authStatus.push(`GitHub: ${session ? '✅ Authenticated' : '❌ Not authenticated'}`);
+            } catch {
+                authStatus.push('GitHub: ❌ Not authenticated');
+            }
+        }
+        
+        if (usedProviders.has('azure') && this.context) {
+            try {
+                const azureManager = new AzureDevOpsApiManager(this.context);
+                const hasValidPAT = await azureManager.hasValidPAT();
+                authStatus.push(`Azure DevOps: ${hasValidPAT ? '✅ PAT configured' : '❌ PAT not configured'}`);
+            } catch {
+                authStatus.push('Azure DevOps: ❌ PAT not configured');
+            }
+        }
+        
         const items = [
             'Sync Status',
             '──────────',
@@ -354,11 +392,24 @@ export class SyncManager {
             `Sync on Startup: ${this.config.syncOnStartup ? '✅' : '❌'}`,
             `Show Notifications: ${this.config.showNotifications ? '✅' : '❌'}`,
             `Debug Mode: ${this.config.debug ? '✅' : '❌'}`,
+        ];
+        
+        // Add authentication section if there are providers to show
+        if (authStatus.length > 0) {
+            items.push(
+                '',
+                'Authentication',
+                '──────────────'
+            );
+            authStatus.forEach(status => items.push(status));
+        }
+
+        items.push(
             '',
             'Repositories',
             '────────────',
             `Count: ${repositories.length}`,
-        ];
+        );
 
         // Add each repository
         repoConfigs.forEach((rc, index) => {
@@ -376,9 +427,19 @@ export class SyncManager {
             '',
             'Commands',
             '────────',
-            '• Sync Now: Ctrl+Shift+P → "Prompts Sync: Sync Now"',
-            '• Show Status: Ctrl+Shift+P → "Prompts Sync: Show Status"',
-            '• Configure: File → Preferences → Settings → Search "Prompts Sync"'
+            '• Sync Now: Ctrl+Shift+P → "Promptitude: Sync Now"',
+            '• Show Status: Ctrl+Shift+P → "Promptitude: Show Status"',
+            '• Open Prompts Folder: Ctrl+Shift+P → "Promptitude: Open Prompts Folder"',
+            '',
+            'Authentication Management',
+            '───────────────────────',
+            '• Setup Azure DevOps: Ctrl+Shift+P → "Promptitude: Setup Azure DevOps Authentication"',
+            '• Update Azure DevOps PAT: Ctrl+Shift+P → "Promptitude: Update Azure DevOps Personal Access Token"',
+            '• Clear Azure DevOps Auth: Ctrl+Shift+P → "Promptitude: Clear Azure DevOps Authentication"',
+            '',
+            'Configuration',
+            '─────────────',
+            '• Settings: File → Preferences → Settings → Search "Promptitude"'
         );
 
         const quickPick = vscode.window.createQuickPick();
