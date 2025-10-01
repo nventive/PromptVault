@@ -18,7 +18,7 @@ export class Logger {
         this.outputChannel.appendLine(logMessage);
         
         // Also log to console for debugging
-        console.log(`Prompts Sync: ${logMessage}`);
+        console.log(`Promptitude: ${logMessage}`);
     }
 
     debug(message: string): void {
