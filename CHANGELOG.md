@@ -2,6 +2,26 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
+## [1.4.0] - 2025-10-01
+
+### Added
+
+- **Azure DevOps Support**: Full support for Azure DevOps repositories including both modern (`dev.azure.com`) and legacy (`visualstudio.com`) URL formats
+- **Enhanced Authentication UX**: Restored convenient sign-in buttons in authentication notifications
+- **Multi-Provider Authentication**: Intelligent authentication prompts that detect which Git providers are configured
+- **Personal Access Token (PAT) Management**: Secure storage and management of Azure DevOps Personal Access Tokens using VS Code's SecretStorage
+- **PAT Management Commands**: New VS Code commands for managing Azure DevOps authentication:
+  - `Promptitude: Setup Azure DevOps Authentication` - Initial PAT configuration
+  - `Promptitude: Update Azure DevOps Personal Access Token` - Update/replace existing PAT
+  - `Promptitude: Clear Azure DevOps Authentication` - Remove stored authentication
+
+### Configuration
+
+- Repository configuration now supports Azure DevOps URLs in addition to GitHub:
+  - `https://dev.azure.com/org/project/_git/repo`
+  - `https://org.visualstudio.com/project/_git/repo`
+  - `https://org.visualstudio.com/_git/repo`
+
 ## [1.3.0] - 2025-09-25
 
 ### Changed
