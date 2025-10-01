@@ -140,7 +140,6 @@ export class SyncManager {
         if (this.config.syncPrompt) {
             allowedPaths.push(REPO_SYNC_PROMPT_PATH);
         }
-        console.log('Allowed paths for sync:', allowedPaths);
 
         // If no types are selected, return empty array
         if (allowedPaths.length === 0) {
@@ -148,14 +147,28 @@ export class SyncManager {
             return [];
         }
 
-        return tree.filter(item => {
-            if (item.type !== 'blob') {
-                return false;
-            }
-
-            return allowedPaths.some(path => item.path.startsWith(path)) &&
-                   (item.path.endsWith('.md') || item.path.endsWith('.txt'));
+        const filtered = tree.filter(item => {
+            const isBlob = item.type === 'blob';
+            
+            // Normalize path separators and remove leading slash for comparison
+            const normalizedPath = item.path.replace(/\\/g, '/').replace(/^\/+/, '');
+            
+            const matchesPath = allowedPaths.some(path => {
+                const normalizedAllowedPath = path.replace(/\\/g, '/').replace(/^\/+/, '');
+                return normalizedPath.startsWith(normalizedAllowedPath);
+            });
+            
+            // Support more file extensions including .prompt.md
+            const isRelevantFile = item.path.endsWith('.md') || 
+                                 item.path.endsWith('.txt');
+            
+            this.logger.debug(`  ${item.path}: blob=${isBlob}, matchesPath=${matchesPath}, isRelevantFile=${isRelevantFile} (normalized: ${normalizedPath})`);
+            
+            return isBlob && matchesPath && isRelevantFile;
         });
+        
+        console.log(`Filtered result: ${filtered.length} files out of ${tree.length} total`);
+        return filtered;
     }
 
     private async syncFiles(gitApi: GitApiManager, owner: string, repo: string, files: GitTreeItem[], branch: string): Promise<number> {
@@ -249,6 +262,12 @@ export class SyncManager {
                 // Get repository tree
                 const tree = await gitApi.getRepositoryTree(owner, repo, branch);
                 this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
+                
+                // Debug: Log all items in the tree to see what's actually there
+                console.log('Repository tree contents:');
+                tree.tree.forEach((item, index) => {
+                    console.log(`  ${index + 1}. ${item.path} (type: ${item.type})`);
+                });
 
                 // Filter relevant files
                 const relevantFiles = this.filterRelevantFiles(tree.tree);
