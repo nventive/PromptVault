@@ -1,10 +1,5 @@
 import * as vscode from 'vscode';
-import { GitApiManager, GitFile, GitTree, RepositoryInfo, GitTreeItem } from './gitProvider';
-
-// Keep backward compatibility
-export interface GitHubFile extends GitFile {}
-export interface GitHubTreeItem extends GitTreeItem {}
-export interface GitHubTree extends GitTree {}
+import { GitApiManager, GitTree, RepositoryInfo } from './gitProvider';
 
 export class GitHubApiManager implements GitApiManager {
     private baseUrl = 'https://api.github.com';
@@ -34,7 +29,7 @@ export class GitHubApiManager implements GitApiManager {
         return response.json();
     }
 
-    async getRepositoryTree(owner: string, repo: string, branch: string = 'master'): Promise<GitHubTree> {
+    async getRepositoryTree(owner: string, repo: string, branch: string = 'master'): Promise<GitTree> {
         const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
         if (!session) {
             throw new Error('GitHub authentication required');
