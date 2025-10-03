@@ -243,16 +243,21 @@ export class SyncManager {
                 }
 
                 // Check authentication for this provider
-                const isAuthenticated = await gitApi.checkAuthentication();
+                // First check if we’re already authenticated
+                let isAuthenticated = await gitApi.checkAuthentication();
                 if (!isAuthenticated) {
                     this.logger.warn(`${gitApi.getProviderName()} authentication required for ${repoUrl}`);
                     await this.notifications.showAuthenticationRequired();
-                    
-                    // Try to authenticate
-                    const authSuccess = await gitApi.requestAuthentication();
-                    if (!authSuccess) {
-                        throw new Error(`${gitApi.getProviderName()} authentication failed`);
+
+                    // Re-check after the notification flow before prompting again
+                    isAuthenticated = await gitApi.checkAuthentication();
+                    if (!isAuthenticated) {
+                        const authSuccess = await gitApi.requestAuthentication();
+                        if (!authSuccess) {
+                            throw new Error(`${gitApi.getProviderName()} authentication failed`);
+                        }
                     }
+                }
                 }
                 
                 // Parse repository URL
