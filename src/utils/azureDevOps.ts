@@ -52,11 +52,11 @@ export class AzureDevOpsApiManager implements GitApiManager {
             if (response.status === 401) {
                 throw new Error('Azure DevOps authentication failed. Please check your Personal Access Token.');
             } else if (response.status === 403) {
-                throw new Error('Access forbidden. Please ensure your PAT has Code (read) permissions for this repository.');
+                throw new Error('Azure DevOps Access forbidden. Please ensure your PAT has Code (read) permissions for this repository.');
             } else if (response.status === 404) {
-                throw new Error('Repository not found. Please check the organization, project, and repository names.');
+                throw new Error('Azure DevOps Repository not found. Please check the PAT and the repository URL. Follow the proper URL formatting guidelines.');
             }
-            throw new Error(`Failed to get repository tree: ${response.status} ${response.statusText}`);
+            throw new Error(`Azure DevOps Failed to get repository tree: ${response.status} ${response.statusText}`);
         }
 
         try {
@@ -120,11 +120,11 @@ export class AzureDevOpsApiManager implements GitApiManager {
             if (response.status === 401) {
                 throw new Error('Azure DevOps authentication failed. Please check your Personal Access Token.');
             } else if (response.status === 403) {
-                throw new Error('Access forbidden. Please ensure your PAT has Code (read) permissions for this file.');
+                throw new Error('Azure DevOpsAccess forbidden. Please ensure your PAT has Code (read) permissions for this file.');
             } else if (response.status === 404) {
-                throw new Error(`File not found: ${path}`);
+                throw new Error(`Azure DevOps File not found: ${path}`);
             }
-            throw new Error(`Failed to get file content: ${response.status} ${response.statusText}`);
+            throw new Error(`Azure DevOps Failed to get file content: ${response.status} ${response.statusText}`);
         }
 
         return response.text();
