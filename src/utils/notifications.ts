@@ -1,16 +1,19 @@
 import * as vscode from 'vscode';
 import { ConfigManager } from '../configManager';
 import { AzureDevOpsApiManager } from './azureDevOps';
+import { Logger } from './logger';
 
 export class NotificationManager {
     private config: vscode.WorkspaceConfiguration;
     private configManager?: ConfigManager;
     private extensionContext?: vscode.ExtensionContext;
+    private logger?: Logger;
 
-    constructor(configManager?: ConfigManager, extensionContext?: vscode.ExtensionContext) {
+    constructor(configManager?: ConfigManager, extensionContext?: vscode.ExtensionContext, logger?: Logger) {
         this.config = vscode.workspace.getConfiguration('promptitude');
         this.configManager = configManager;
         this.extensionContext = extensionContext;
+        this.logger = logger;
     }
 
     private get showNotifications(): boolean {
@@ -64,15 +67,8 @@ export class NotificationManager {
         let actions = ['Retry', 'Show Logs'];
         
         // Check for specific Azure DevOps authentication errors in the error message
-        if (error.includes('400') && error.includes('Azure DevOps')) {
-            message = `❌ Azure DevOps sync failed with 400 Bad Request. This usually indicates authentication or configuration issues.`;
-            actions = ['Update Azure DevOps PAT', 'Retry', 'Show Logs'];
-        } else if (error.includes('401') && error.includes('Azure DevOps')) {
-            message = `❌ Azure DevOps authentication failed. Your Personal Access Token may be invalid or expired.`;
-            actions = ['Update Azure DevOps PAT', 'Retry', 'Show Logs'];
-        } else if (error.includes('403') && error.includes('Azure DevOps')) {
-            message = `❌ Azure DevOps access forbidden. Please check your PAT permissions.`;
-            actions = ['Update Azure DevOps PAT', 'Retry', 'Show Logs'];
+        if (error.includes('Azure DevOps') || error.includes('dev.azure.com') || error.includes('visualstudio.com')) {
+            actions = ['Add Azure DevOps PAT', 'Retry', 'Show Logs'];
         }
         
         const result = await this.showError(message, ...actions);
@@ -80,9 +76,9 @@ export class NotificationManager {
         if (result === 'Retry') {
             vscode.commands.executeCommand('promptitude.syncNow');
         } else if (result === 'Show Logs') {
-            vscode.commands.executeCommand('workbench.action.output.show');
-        } else if (result === 'Update Azure DevOps PAT') {
-            vscode.commands.executeCommand('promptitude.updateAzureDevOpsPAT');
+            this.logger?.show();
+        } else if (result === 'Add Azure DevOps PAT') {
+            vscode.commands.executeCommand('promptitude.addAzureDevOpsPAT');
         }
     }
 
@@ -129,7 +125,7 @@ export class NotificationManager {
         } else if (result === 'Setup Azure DevOps') {
             await this.handleAzureDevOpsSetup();
         } else if (result === 'Show Logs') {
-            vscode.commands.executeCommand('workbench.action.output.show');
+            this.logger?.show();
         }
     }
 

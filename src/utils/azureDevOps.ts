@@ -320,7 +320,7 @@ export class AzureDevOpsApiManager implements GitApiManager {
             }
         }
 
-        throw new Error(`No valid PAT found for organization '${organization}'. Please add a PAT with access to this organization.`);
+        throw new Error(`No valid PAT found for Azure DevOps organization '${organization}'. Please add a PAT with access to this organization.`);
     }
 
     /**

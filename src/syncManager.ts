@@ -41,7 +41,7 @@ export class SyncManager {
         private statusBar: StatusBarManager,
         private logger: Logger
     ) {
-        this.notifications = new NotificationManager(this.config);
+        this.notifications = new NotificationManager(this.config, undefined, this.logger);
         this.fileSystem = new FileSystemManager();
     }
 
@@ -49,7 +49,7 @@ export class SyncManager {
         this.context = context;
         
         // Update notification manager with extension context
-        this.notifications = new NotificationManager(this.config, this.context);
+        this.notifications = new NotificationManager(this.config, this.context, this.logger);
         
         this.logger.info('Initializing SyncManager...');
 
