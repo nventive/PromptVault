@@ -2,25 +2,41 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
-## [1.4.0] - 2025-10-01
+## [1.4.0] - 2025-10-03
 
 ### Added
 
-- **Azure DevOps Support**: Full support for Azure DevOps repositories including both modern (`dev.azure.com`) and legacy (`visualstudio.com`) URL formats
-- **Enhanced Authentication UX**: Restored convenient sign-in buttons in authentication notifications
-- **Multi-Provider Authentication**: Intelligent authentication prompts that detect which Git providers are configured
-- **Personal Access Token (PAT) Management**: Secure storage and management of Azure DevOps Personal Access Tokens using VS Code's SecretStorage
-- **PAT Management Commands**: New VS Code commands for managing Azure DevOps authentication:
-  - `Promptitude: Setup Azure DevOps Authentication` - Initial PAT configuration
-  - `Promptitude: Update Azure DevOps Personal Access Token` - Update/replace existing PAT
-  - `Promptitude: Clear Azure DevOps Authentication` - Remove stored authentication
+- **Azure DevOps Support**: Support for Azure DevOps repositories including both modern (`dev.azure.com`) and legacy (`visualstudio.com`) URL formats
+
+- **Multiple Personal Access Token (PAT) Support**: Support for multiple Azure DevOps PATs with intelligent caching
+  - Automatically tries all configured PATs until one works for a given organization
+  - Caches successful PAT-to-organization mappings for optimal performance
+  - PATs are securely stored using VS Code's SecretStorage API
+
+- **New Azure DevOps Management Commands**:
+  - `Promptitude: Add Azure DevOps Personal Access Token` - Add a new PAT to the list
+  - `Promptitude: Remove Azure DevOps Personal Access Token(s)` - Remove specific or all PATs
+  - `Promptitude: Clear Azure DevOps Authentication Cache` - Clear organization-to-PAT cache
+
+- **Open Prompts Folder Command**: New command to quickly open the prompts directory in your system's file explorer
+
 
 ### Configuration
 
 - Repository configuration now supports Azure DevOps URLs in addition to GitHub:
   - `https://dev.azure.com/org/project/_git/repo`
+  - `https://dev.azure.com/org/project/_git/repo|branch`
   - `https://org.visualstudio.com/project/_git/repo`
+  - `https://org.visualstudio.com/project/_git/repo|branch`
   - `https://org.visualstudio.com/_git/repo`
+- URLs with encoded spaces and special characters are now properly supported
+
+### Fixed
+
+- Branch specification now works correctly for all repository types
+- Authentication prompts no longer appear twice
+- File filtering is more reliable with better logging
+- Extension name consistently shows as "Promptitude" throughout the UI
 
 ## [1.3.0] - 2025-09-25
 
