@@ -468,7 +468,7 @@ export class SyncManager {
 
         const quickPick = vscode.window.createQuickPick();
         quickPick.items = items.map(item => ({ label: item }));
-        quickPick.title = 'Prompts Sync Extension Status';
+        quickPick.title = 'Promptitude Extension Status';
         quickPick.placeholder = 'Extension status and configuration';
         quickPick.canSelectMany = false;
         

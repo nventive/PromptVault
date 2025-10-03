@@ -11,7 +11,7 @@ let logger: Logger;
 
 export function activate(context: vscode.ExtensionContext) {
     logger = new Logger();
-    logger.info('Prompts Sync Extension is activating...');
+    logger.info('Promptitude Extension is activating...');
 
     const configManager = new ConfigManager();
     statusBarManager = new StatusBarManager();
@@ -150,11 +150,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Initialize sync manager
     syncManager.initialize(context);
 
-    logger.info('Prompts Sync Extension activated successfully');
+    logger.info('Promptitude Extension activated successfully');
 }
 
 export function deactivate() {
-    logger?.info('Prompts Sync Extension is deactivating...');
+    logger?.info('Promptitude Extension is deactivating...');
     syncManager?.dispose();
     statusBarManager?.dispose();
 }

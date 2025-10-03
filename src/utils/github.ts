@@ -23,7 +23,7 @@ export class GitHubApiManager implements GitApiManager {
             headers: {
                 'Authorization': `Bearer ${session.accessToken}`,
                 'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'VS Code Prompts Sync Extension'
+                'User-Agent': 'VS Code Promptitude Extension'
             }
         });
 
@@ -45,7 +45,7 @@ export class GitHubApiManager implements GitApiManager {
             headers: {
                 ['Authorization']: `Bearer ${session.accessToken}`,
                 ['Accept']: 'application/vnd.github.v3+json',
-                ['User-Agent']: 'VS Code Prompts Sync Extension'
+                ['User-Agent']: 'VS Code Promptitude Extension'
             }
         });
 
@@ -61,7 +61,7 @@ export class GitHubApiManager implements GitApiManager {
             headers: {
                 ['Authorization']: `Bearer ${session.accessToken}`,
                 ['Accept']: 'application/vnd.github.v3+json',
-                ['User-Agent']: 'VS Code Prompts Sync Extension'
+                ['User-Agent']: 'VS Code Promptitude Extension'
             }
         });
 
@@ -82,7 +82,7 @@ export class GitHubApiManager implements GitApiManager {
             headers: {
                 ['Authorization']: `Bearer ${session.accessToken}`,
                 ['Accept']: 'application/vnd.github.v3+json',
-                ['User-Agent']: 'VS Code Prompts Sync Extension'
+                ['User-Agent']: 'VS Code Promptitude Extension'
             }
         });
 
