@@ -118,9 +118,11 @@ export class ConfigManager {
     getUsedProviders(): Set<GitProvider> {
         const providers = new Set<GitProvider>();
         
+        // In getUsedProviders():
         for (const repo of this.repositories) {
+            const [url] = repo.split('|');
             try {
-                const provider = GitProviderFactory.detectProvider(repo);
+                const provider = GitProviderFactory.detectProvider(url);
                 if (provider !== 'unknown') {
                     providers.add(provider);
                 }
@@ -152,9 +154,11 @@ export class ConfigManager {
     getRepositoriesByProvider(): Map<GitProvider, string[]> {
         const providerMap = new Map<GitProvider, string[]>();
         
+        // Sanitize branch suffix before detection
         for (const repo of this.repositories) {
+            const [url] = repo.split('|');
             try {
-                const provider = GitProviderFactory.detectProvider(repo);
+                const provider = GitProviderFactory.detectProvider(url);
                 if (provider !== 'unknown') {
                     if (!providerMap.has(provider)) {
                         providerMap.set(provider, []);
@@ -165,6 +169,9 @@ export class ConfigManager {
                 // Ignore invalid URLs
             }
         }
+
+        return providerMap;
+    }
         
         return providerMap;
     }
