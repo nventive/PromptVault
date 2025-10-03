@@ -398,10 +398,11 @@ export class SyncManager {
         if (usedProviders.has('azure') && this.context) {
             try {
                 const azureManager = new AzureDevOpsApiManager(this.context);
-                const hasValidPAT = await azureManager.hasValidPAT();
-                authStatus.push(`Azure DevOps: ${hasValidPAT ? '✅ PAT configured' : '❌ PAT not configured'}`);
+                const patCount = await azureManager.getPATCount();
+                const cachedOrgs = await azureManager.getCachedOrganizations();
+                authStatus.push(`Azure DevOps: ${patCount > 0 ? `✅ ${patCount} PAT(s) configured` : '❌ No PATs configured'}${cachedOrgs.length > 0 ? ` (${cachedOrgs.length} org(s) cached)` : ''}`);
             } catch {
-                authStatus.push('Azure DevOps: ❌ PAT not configured');
+                authStatus.push('Azure DevOps: ❌ No PATs configured');
             }
         }
         
@@ -456,9 +457,9 @@ export class SyncManager {
             '',
             'Authentication Management',
             '───────────────────────',
-            '• Setup Azure DevOps: Ctrl+Shift+P → "Promptitude: Setup Azure DevOps Authentication"',
-            '• Update Azure DevOps PAT: Ctrl+Shift+P → "Promptitude: Update Azure DevOps Personal Access Token"',
-            '• Clear Azure DevOps Auth: Ctrl+Shift+P → "Promptitude: Clear Azure DevOps Authentication"',
+            '• Add Azure DevOps PAT: Ctrl+Shift+P → "Promptitude: Add Azure DevOps Personal Access Token"',
+            '• Remove Azure DevOps PAT: Ctrl+Shift+P → "Promptitude: Remove Azure DevOps Personal Access Token(s)"',
+            '• Clear Azure DevOps Cache: Ctrl+Shift+P → "Promptitude: Clear Azure DevOps Authentication Cache"',
             '',
             'Configuration',
             '─────────────',

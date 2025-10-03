@@ -51,7 +51,7 @@
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Repositories to sync, with optional per-repo branch using the format `https://github.com/owner/repo|branch`. If no branch is specified, `main` is used.\n\nExamples:\n- `https://github.com/org/prompt-repo` (uses `main`)\n- `https://github.com/org/prompt-repo|develop`",
+          "markdownDescription": "Repositories to sync, with optional per-repo branch using the format `https://github.com/owner/repo|branch` or `https://dev.azure.com/organisation/project/_git/repo-name|branch`. If no branch is specified, `main` is used.\n\nExamples:\n- `https://github.com/org/prompt-repo` (uses `main`)\n- `https://github.com/org/prompt-repo|develop`\n- `https://dev.azure.com/organisation/project/_git/repo-name` (uses `main`)\n- `https://dev.azure.com/organisation/project/_git/repo-name|develop`",
           "description": "Repositories to sync. Use format: https://github.com/owner/repo or https://github.com/owner/repo|branch",
           "order": 0
         },
@@ -107,18 +107,18 @@
         "category": "Promptitude"
       },
       {
-        "command": "promptitude.setupAzureDevOps",
-        "title": "Setup Azure DevOps Authentication",
-        "category": "Promptitude"
-      },
-      {
-        "command": "promptitude.updateAzureDevOpsPAT",
-        "title": "Update Azure DevOps Personal Access Token",
+        "command": "promptitude.addAzureDevOpsPAT",
+        "title": "Add Azure DevOps Personal Access Token",
         "category": "Promptitude"
       },
       {
         "command": "promptitude.clearAzureDevOpsPAT",
-        "title": "Clear Azure DevOps Authentication",
+        "title": "Remove Azure DevOps Personal Access Token(s)",
+        "category": "Promptitude"
+      },
+      {
+        "command": "promptitude.clearAzureDevOpsCache",
+        "title": "Clear Azure DevOps Authentication Cache",
         "category": "Promptitude"
       }
     ]

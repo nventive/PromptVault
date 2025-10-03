@@ -2,8 +2,13 @@ import * as vscode from 'vscode';
 import { GitApiManager, GitTree, RepositoryInfo } from './gitProvider';
 import { Logger } from './logger';
 
+interface PATCache {
+    [organization: string]: number; // organization name -> PAT array index
+}
+
 export class AzureDevOpsApiManager implements GitApiManager {
-    private static readonly patStorageKey = 'promptitude.azureDevOps.pat';
+    private static readonly patsStorageKey = 'promptitude.azureDevOps.pats';
+    private static readonly cacheStorageKey = 'promptitude.azureDevOps.patCache';
     private static readonly minPatLength = 8; // Reduced from 20 to be more permissive
     private extensionContext: vscode.ExtensionContext;
 
@@ -18,8 +23,10 @@ export class AzureDevOpsApiManager implements GitApiManager {
         return 'azure';
     }
 
-    async getAuthenticatedUser(): Promise<any> {
-        const headers = await this.getAuthHeaders();
+    async getAuthenticatedUser(organization?: string): Promise<any> {
+        // For getting user info, we can use any PAT (use first one or specified org)
+        const org = organization || (await this.getCachedOrganizations())[0] || 'default';
+        const headers = await this.getAuthHeaders(org);
         
         try {
             // Get actual user profile from Azure DevOps
@@ -47,10 +54,11 @@ export class AzureDevOpsApiManager implements GitApiManager {
     }
 
     async getRepositoryTree(owner: string, repo: string, branch: string = 'main'): Promise<GitTree> {
-        const headers = await this.getAuthHeaders();
-        
         // Parse the owner to extract organization and project
         const { organization, project, baseUrl } = this.parseOwnerInfo(owner);
+        
+        // Get auth headers for this specific organization
+        const headers = await this.getAuthHeaders(organization);
         
         // Azure DevOps REST API endpoint for getting repository items
         // For visualstudio.com, the format is: baseUrl/project/_apis/git/repositories/repo/items
@@ -110,10 +118,11 @@ export class AzureDevOpsApiManager implements GitApiManager {
     }
 
     async getFileContent(owner: string, repo: string, path: string, branch: string = 'main'): Promise<string> {
-        const headers = await this.getAuthHeaders();
-        
         // Parse the owner to extract organization and project
         const { organization, project, baseUrl } = this.parseOwnerInfo(owner);
+        
+        // Get auth headers for this specific organization
+        const headers = await this.getAuthHeaders(organization);
         
         // Azure DevOps REST API endpoint for getting file content
         // For visualstudio.com, the format is: baseUrl/project/_apis/git/repositories/repo/items
@@ -257,22 +266,8 @@ export class AzureDevOpsApiManager implements GitApiManager {
                 return false; // User cancelled
             }
 
-            // Validate the PAT by making a test API call (but don't fail if network issues occur)
-            const isValid = await this.validatePAT(pat);
-            if (!isValid) {
-                const userChoice = await vscode.window.showWarningMessage(
-                    'Unable to validate Personal Access Token with Azure DevOps API. This could be due to network issues or token permissions.',
-                    'Use Token Anyway',
-                    'Try Different Token'
-                );
-                
-                if (userChoice !== 'Use Token Anyway') {
-                    return false;
-                }
-            }
-
-            // Store the PAT securely
-            await this.storePersonalAccessToken(pat);
+            // Add the PAT to the list (validation will happen during actual sync)
+            await this.addPAT(pat);
             return true;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -283,13 +278,55 @@ export class AzureDevOpsApiManager implements GitApiManager {
 
     /**
      * Get authenticated headers for API requests
+     * Tries cached PAT first, then iterates through all PATs until one works
      */
-    private async getAuthHeaders(): Promise<{ [key: string]: string }> {
-        const pat = await this.getPersonalAccessToken();
-        if (!pat) {
-            throw new Error('No Azure DevOps PAT found. Please authenticate first.');
+    private async getAuthHeaders(organization: string): Promise<{ [key: string]: string }> {
+        const pats = await this.getAllPATs();
+        
+        if (pats.length === 0) {
+            throw new Error('No Azure DevOps PAT configured. Please add a PAT first.');
         }
 
+        // Try cached PAT first
+        const cache = await this.getCache();
+        const cachedIndex = cache[organization];
+        
+        if (cachedIndex !== undefined && cachedIndex < pats.length) {
+            const headers = this.buildAuthHeaders(pats[cachedIndex]);
+            
+            if (await this.validateHeaders(headers, organization)) {
+                console.log(`[Promptitude] Cache hit: PAT validated for '${organization}'`);
+                return headers;
+            }
+            
+            // Cache was stale, remove this entry
+            console.log(`[Promptitude] Cache miss: cached PAT no longer valid for '${organization}'`);
+            delete cache[organization];
+            await this.saveCache(cache);
+        }
+
+        // Try all PATs
+        console.log(`[Promptitude] Trying all PATs (${pats.length} total) for organization '${organization}'`);
+        for (let i = 0; i < pats.length; i++) {
+            console.log(`[Promptitude] Attempting PAT ${i + 1}/${pats.length} for organization '${organization}'`);
+            const headers = this.buildAuthHeaders(pats[i]);
+            
+            if (await this.validateHeaders(headers, organization)) {
+                console.log(`[Promptitude] Success: a PAT successfully validated for '${organization}', updating cache`);
+                // Cache successful PAT
+                cache[organization] = i;
+                await this.saveCache(cache);
+                return headers;
+            }
+        }
+
+        throw new Error(`No valid PAT found for organization '${organization}'. Please add a PAT with access to this organization.`);
+    }
+
+    /**
+     * Build authorization headers from a PAT
+     */
+    private buildAuthHeaders(pat: string): { [key: string]: string } {
         return {
             ['Authorization']: `Basic ${Buffer.from(`:${pat}`).toString('base64')}`,
             ['Accept']: 'application/json',
@@ -299,50 +336,166 @@ export class AzureDevOpsApiManager implements GitApiManager {
     }
 
     /**
-     * Validate PAT by making a test API call
+     * Validate headers by making a test API call to the organization
+     * Note: We can't validate without a specific repository since PATs only have Code:Read permission
+     * This method will be called naturally during repository operations
      */
-    private async validatePAT(pat: string): Promise<boolean> {
+    private async validateHeaders(headers: { [key: string]: string }, organization: string): Promise<boolean> {
         try {
-            const response = await fetch('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=6.0', {
-                headers: {
-                    ['Authorization']: `Basic ${Buffer.from(`:${pat}`).toString('base64')}`,
-                    ['Accept']: 'application/json'
-                }
-            });
-            return true;
+            // Try to list projects in the organization - this requires minimal permissions
+            // For dev.azure.com format
+            const url = `https://dev.azure.com/${encodeURIComponent(organization)}/_apis/projects?api-version=7.0`;
+            const response = await fetch(url, { headers });
+            
+            if (response.ok) {
+                return true;
+            }
+            
+            // If dev.azure.com fails, try legacy visualstudio.com format
+            const legacyUrl = `https://${encodeURIComponent(organization)}.visualstudio.com/_apis/projects?api-version=7.0`;
+            const legacyResponse = await fetch(legacyUrl, { headers });
+            
+            return legacyResponse.ok;
         } catch (error) {
-            console.log('PAT validation network error:', error);
-            // Network errors shouldn't invalidate tokens
-            return true; // Be more permissive
+            console.log(`[Promptitude] Validation failed for organization '${organization}': ${error}`);
+            return false;
+        }
+    }
+
+
+
+    /**
+     * Get all stored PATs
+     */
+    private async getAllPATs(): Promise<string[]> {
+        const stored = await this.extensionContext.secrets.get(AzureDevOpsApiManager.patsStorageKey);
+        if (!stored) {
+            return [];
+        }
+        try {
+            const pats = JSON.parse(stored);
+            return Array.isArray(pats) ? pats : [];
+        } catch {
+            return [];
         }
     }
 
     /**
+     * Add a new PAT to the list
+     */
+    async addPAT(pat: string): Promise<void> {
+        const pats = await this.getAllPATs();
+        if (!pats.includes(pat)) {
+            pats.push(pat);
+            await this.extensionContext.secrets.store(
+                AzureDevOpsApiManager.patsStorageKey,
+                JSON.stringify(pats)
+            );
+        }
+    }
+
+    /**
+     * Remove a PAT from the list by index
+     */
+    async removePAT(index: number): Promise<void> {
+        const pats = await this.getAllPATs();
+        if (index >= 0 && index < pats.length) {
+            pats.splice(index, 1);
+            await this.extensionContext.secrets.store(
+                AzureDevOpsApiManager.patsStorageKey,
+                JSON.stringify(pats)
+            );
+            // Clear cache since PAT indices have changed
+            await this.clearCache();
+        }
+    }
+
+    /**
+     * Remove all PATs
+     */
+    async clearAllPATs(): Promise<void> {
+        await this.extensionContext.secrets.delete(AzureDevOpsApiManager.patsStorageKey);
+        await this.clearCache();
+    }
+
+    /**
+     * Get the PAT cache
+     */
+    private async getCache(): Promise<PATCache> {
+        const stored = this.extensionContext.globalState.get<string>(AzureDevOpsApiManager.cacheStorageKey);
+        if (!stored) {
+            return {};
+        }
+        try {
+            return JSON.parse(stored);
+        } catch {
+            return {};
+        }
+    }
+
+    /**
+     * Save the PAT cache
+     */
+    private async saveCache(cache: PATCache): Promise<void> {
+        await this.extensionContext.globalState.update(
+            AzureDevOpsApiManager.cacheStorageKey,
+            JSON.stringify(cache)
+        );
+    }
+
+    /**
+     * Clear the PAT cache
+     */
+    async clearCache(): Promise<void> {
+        await this.extensionContext.globalState.update(AzureDevOpsApiManager.cacheStorageKey, undefined);
+    }
+
+    /**
+     * Check if any PAT is stored
+     */
+    async hasValidPAT(): Promise<boolean> {
+        const pats = await this.getAllPATs();
+        return pats.length > 0 && pats.every(pat => pat.length >= AzureDevOpsApiManager.minPatLength);
+    }
+
+    /**
+     * Get count of stored PATs
+     */
+    async getPATCount(): Promise<number> {
+        const pats = await this.getAllPATs();
+        return pats.length;
+    }
+
+    /**
+     * Get list of cached organizations
+     */
+    async getCachedOrganizations(): Promise<string[]> {
+        const cache = await this.getCache();
+        return Object.keys(cache);
+    }
+
+    /**
      * Securely retrieve the PAT from VS Code's SecretStorage
+     * @deprecated Use getAllPATs() instead
      */
     private async getPersonalAccessToken(): Promise<string | undefined> {
-        return await this.extensionContext.secrets.get(AzureDevOpsApiManager.patStorageKey);
+        const pats = await this.getAllPATs();
+        return pats.length > 0 ? pats[0] : undefined;
     }
 
     /**
      * Securely store the PAT using VS Code's SecretStorage
+     * @deprecated Use addPAT() instead
      */
     private async storePersonalAccessToken(pat: string): Promise<void> {
-        await this.extensionContext.secrets.store(AzureDevOpsApiManager.patStorageKey, pat);
+        await this.addPAT(pat);
     }
 
     /**
      * Remove the stored PAT (for logout/cleanup)
+     * @deprecated Use clearAllPATs() instead
      */
     async clearPersonalAccessToken(): Promise<void> {
-        await this.extensionContext.secrets.delete(AzureDevOpsApiManager.patStorageKey);
-    }
-
-    /**
-     * Check if PAT is stored and appears valid
-     */
-    async hasValidPAT(): Promise<boolean> {
-        const pat = await this.getPersonalAccessToken();
-        return pat !== undefined && pat.length >= AzureDevOpsApiManager.minPatLength;
+        await this.clearAllPATs();
     }
 }
