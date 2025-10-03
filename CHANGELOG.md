@@ -2,6 +2,42 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
+## [1.4.0] - 2025-10-03
+
+### Added
+
+- **Azure DevOps Support**: Support for Azure DevOps repositories including both modern (`dev.azure.com`) and legacy (`visualstudio.com`) URL formats
+
+- **Multiple Personal Access Token (PAT) Support**: Support for multiple Azure DevOps PATs with intelligent caching
+  - Automatically tries all configured PATs until one works for a given organization
+  - Caches successful PAT-to-organization mappings for optimal performance
+  - PATs are securely stored using VS Code's SecretStorage API
+
+- **New Azure DevOps Management Commands**:
+  - `Promptitude: Add Azure DevOps Personal Access Token` - Add a new PAT to the list
+  - `Promptitude: Remove Azure DevOps Personal Access Token(s)` - Remove specific or all PATs
+  - `Promptitude: Clear Azure DevOps Authentication Cache` - Clear organization-to-PAT cache
+
+- **Open Prompts Folder Command**: New command to quickly open the prompts directory in your system's file explorer
+
+
+### Configuration
+
+- Repository configuration now supports Azure DevOps URLs in addition to GitHub:
+  - `https://dev.azure.com/org/project/_git/repo`
+  - `https://dev.azure.com/org/project/_git/repo|branch`
+  - `https://org.visualstudio.com/project/_git/repo`
+  - `https://org.visualstudio.com/project/_git/repo|branch`
+  - `https://org.visualstudio.com/_git/repo`
+- URLs with encoded spaces and special characters are now properly supported
+
+### Fixed
+
+- Branch specification now works correctly for all repository types
+- Authentication prompts no longer appear twice
+- File filtering is more reliable with better logging
+- Extension name consistently shows as "Promptitude" throughout the UI
+
 ## [1.3.0] - 2025-09-25
 
 ### Changed
@@ -33,14 +69,14 @@ All notable changes to the "promptitude" extension will be documented in this fi
 
 ### Added
 
-- Initial release of Prompts Sync Extension
+- Initial release of Promptitude Extension
 - Automatic sync functionality for GitHub Copilot prompts
 - Support for configurable sync frequency (startup, hourly, daily, weekly, manual)
 - Cross-platform support (macOS, Windows, Linux)
 - GitHub authentication integration using VS Code's built-in authentication
 - Status bar integration with sync status indicators
-- Manual sync command (`Prompts Sync: Sync Now`)
-- Status display command (`Prompts Sync: Show Status`)
+- Manual sync command (`Promptitude: Sync Now`)
+- Status display command (`Promptitude: Show Status`)
 - Comprehensive logging and debug mode
 - User notifications for sync operations
 - Configurable prompts directory with smart defaults
