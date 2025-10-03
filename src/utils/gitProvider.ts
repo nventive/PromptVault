@@ -21,10 +21,12 @@ export interface GitTree {
     truncated: boolean;
 }
 
+export type GitProvider = 'github' | 'azure' | 'gitlab' | 'bitbucket' | 'unknown';
+
 export interface RepositoryInfo {
     owner: string;
     repo: string;
-    provider: string;
+    provider: GitProvider;
 }
 
 export interface GitApiManager {
@@ -63,5 +65,3 @@ export interface GitApiManager {
      */
     getProviderName(): string;
 }
-
-export type GitProvider = 'github' | 'azure' | 'gitlab' | 'bitbucket' | 'unknown';

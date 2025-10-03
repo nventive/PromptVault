@@ -172,7 +172,4 @@ export class ConfigManager {
 
         return providerMap;
     }
-        
-        return providerMap;
-    }
 }
