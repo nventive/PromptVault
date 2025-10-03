@@ -4,7 +4,7 @@
 
 ## 🎯 Overview
 
-The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot prompts, instructions, and templates from one or more Git repositories to your local VS Code user prompts directory. This ensures you always have access to the most up-to-date, peer-reviewed prompts across all your projects from multiple sources.
+The Promptitude Extension automatically synchronizes the latest GitHub Copilot prompts, instructions, and templates from one or more Git repositories to your local VS Code user prompts directory. This ensures you always have access to the most up-to-date, peer-reviewed prompts across all your projects from multiple sources.
 
 ## ✨ Features
 
@@ -123,7 +123,7 @@ Once configured, the extension works automatically based on your sync frequency 
 You can manually trigger a sync at any time:
 
 1. Open the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
-2. Type "Prompts Sync: Sync Now"
+2. Type "Promptitude: Sync Now"
 3. Press Enter
 
 ### Status Bar
@@ -139,7 +139,7 @@ The extension adds a status bar item showing:
 Check detailed sync information:
 
 1. Open the command palette
-2. Type "Prompts Sync: Show Status"
+2. Type "Promptitude: Show Status"
 3. View sync history, errors, and configuration details
 
 ## 📁 Synced Content
@@ -230,7 +230,7 @@ Enable debug logging:
 1. Open VS Code Settings
 2. Search for "promptitude.debug"
 3. Enable debug mode
-4. Check the "Prompts Sync" output channel for detailed logs
+4. Check the "Promptitude" output channel for detailed logs
 
 ## 🔒 Security & Privacy
 

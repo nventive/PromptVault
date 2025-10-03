@@ -53,14 +53,14 @@ All notable changes to the "promptitude" extension will be documented in this fi
 
 ### Added
 
-- Initial release of Prompts Sync Extension
+- Initial release of Promptitude Extension
 - Automatic sync functionality for GitHub Copilot prompts
 - Support for configurable sync frequency (startup, hourly, daily, weekly, manual)
 - Cross-platform support (macOS, Windows, Linux)
 - GitHub authentication integration using VS Code's built-in authentication
 - Status bar integration with sync status indicators
-- Manual sync command (`Prompts Sync: Sync Now`)
-- Status display command (`Prompts Sync: Show Status`)
+- Manual sync command (`Promptitude: Sync Now`)
+- Status display command (`Promptitude: Show Status`)
 - Comprehensive logging and debug mode
 - User notifications for sync operations
 - Configurable prompts directory with smart defaults

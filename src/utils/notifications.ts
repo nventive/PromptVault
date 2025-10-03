@@ -37,7 +37,7 @@ export class NotificationManager {
     }
 
     async showSyncSuccess(itemsCount: number): Promise<void> {
-        await this.showInfo(`✅ Prompts synced successfully! ${itemsCount} items updated.`);
+        await this.showInfo(`✅ Promptitudeed successfully! ${itemsCount} items updated.`);
     }
 
     async showPartialSyncSuccess(itemsCount: number, successCount: number, totalCount: number, errors: string[]): Promise<void> {
@@ -87,7 +87,7 @@ export class NotificationManager {
     }
 
     async showSyncStart(): Promise<void> {
-        await this.showInfo('🔄 Starting prompts sync...');
+        await this.showInfo('🔄 Starting Promptitude...');
     }
 
     async showAuthenticationRequired(): Promise<void> {
