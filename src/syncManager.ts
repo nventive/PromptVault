@@ -258,7 +258,6 @@ export class SyncManager {
                         }
                     }
                 }
-                }
                 
                 // Parse repository URL
                 const { owner, repo } = gitApi.parseRepositoryUrl(repoUrl);

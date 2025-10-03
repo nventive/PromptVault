@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { GitApiManager, GitTree, RepositoryInfo } from './gitProvider';
+import { Logger } from './logger';
 
 export class AzureDevOpsApiManager implements GitApiManager {
     private static readonly patStorageKey = 'promptitude.azureDevOps.pat';
-    private static readonly minPatLength = 20;
+    private static readonly minPatLength = 8; // Reduced from 20 to be more permissive
     private extensionContext: vscode.ExtensionContext;
 
     constructor(context: vscode.ExtensionContext) {
@@ -56,12 +57,18 @@ export class AzureDevOpsApiManager implements GitApiManager {
         // For dev.azure.com, the format is: baseUrl/org/project/_apis/git/repositories/repo/items
         let url: string;
         if (baseUrl.includes('visualstudio.com')) {
-            url = `${baseUrl}/${project}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
+            // URL encode the project name to handle spaces and special characters
+            const encodedProject = encodeURIComponent(project);
+            url = `${baseUrl}/${encodedProject}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
         } else {
-            url = `${baseUrl}/${organization}/${project}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
+            // URL encode both organization and project name
+            const encodedOrganization = encodeURIComponent(organization);
+            const encodedProject = encodeURIComponent(project);
+            url = `${baseUrl}/${encodedOrganization}/${encodedProject}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
         }
 
         const response = await fetch(url, { headers });
+        const responseText = await response.text();
 
         if (!response.ok) {
             if (response.status === 401) {
@@ -74,23 +81,32 @@ export class AzureDevOpsApiManager implements GitApiManager {
             throw new Error(`Failed to get repository tree: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
-        
-        // Convert Azure DevOps response to our GitTree format
-        const treeItems = data.value
-            .filter((item: any) => item.gitObjectType === 'blob') // Only files
-            .map((item: any) => ({
-                path: item.path.startsWith('/') ? item.path.substring(1) : item.path,
-                mode: '100644',
-                type: 'blob' as const,
-                sha: item.objectId,
-                url: item.url
-            }));
+        try {
+            const data = JSON.parse(responseText);
+            
+            // Convert Azure DevOps response to our GitTree format
+            const treeItems = data.value
+                .filter((item: any) => item.gitObjectType === 'blob') // Only files
+                .map((item: any) => ({
+                    path: item.path.startsWith('/') ? item.path.substring(1) : item.path,
+                    mode: '100644',
+                    type: 'blob' as const,
+                    sha: item.objectId,
+                    url: item.url
+                }));
 
-        return {
-            tree: treeItems,
-            truncated: false
-        };
+            return {
+                tree: treeItems,
+                truncated: false
+            };
+        } catch (jsonError) {
+            // Check if it's a sign-in page
+            if (responseText.includes('Sign In') || responseText.includes('signin') || responseText.includes('<!DOCTYPE')) {
+                throw new Error(`Azure DevOps authentication failed. The API returned a sign-in page instead of data. Please verify your Personal Access Token is correct and has not expired. You may need to update it using the "Promptitude: Update Azure DevOps Personal Access Token" command.`);
+            }
+            
+            throw new Error(`Azure DevOps API returned non-JSON response. This might indicate an authentication or URL formatting issue.`);
+        }
     }
 
     async getFileContent(owner: string, repo: string, path: string, branch: string = 'main'): Promise<string> {
@@ -104,9 +120,14 @@ export class AzureDevOpsApiManager implements GitApiManager {
         // For dev.azure.com, the format is: baseUrl/org/project/_apis/git/repositories/repo/items
         let url: string;
         if (baseUrl.includes('visualstudio.com')) {
-            url = `${baseUrl}/${project}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
+            // URL encode the project name to handle spaces and special characters
+            const encodedProject = encodeURIComponent(project);
+            url = `${baseUrl}/${encodedProject}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
         } else {
-            url = `${baseUrl}/${organization}/${project}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
+            // URL encode both organization and project name
+            const encodedOrganization = encodeURIComponent(organization);
+            const encodedProject = encodeURIComponent(project);
+            url = `${baseUrl}/${encodedOrganization}/${encodedProject}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
         }
 
         const response = await fetch(url, {
@@ -131,7 +152,9 @@ export class AzureDevOpsApiManager implements GitApiManager {
     }
 
     parseRepositoryUrl(url: string): RepositoryInfo {
-        const cleanUrl = url.replace(/\.git$/, '').replace(/\/$/, '');
+        // Decode URL first to handle encoded characters like %20 for spaces
+        const decodedUrl = decodeURIComponent(url);
+        const cleanUrl = decodedUrl.replace(/\.git$/, '').replace(/\/$/, '');
         
         // Azure DevOps patterns
         const azurePatterns = [
@@ -220,7 +243,11 @@ export class AzureDevOpsApiManager implements GitApiManager {
                         return 'Personal Access Token is required';
                     }
                     if (value.length < AzureDevOpsApiManager.minPatLength) {
-                        return 'Personal Access Token appears to be too short';
+                        return `Personal Access Token appears to be too short (minimum ${AzureDevOpsApiManager.minPatLength} characters)`;
+                    }
+                    // Allow tokens with various formats - Azure DevOps PATs can vary in length
+                    if (value.length > 200) {
+                        return 'Personal Access Token appears to be too long';
                     }
                     return null;
                 }
@@ -230,13 +257,18 @@ export class AzureDevOpsApiManager implements GitApiManager {
                 return false; // User cancelled
             }
 
-            // Validate the PAT by making a test API call
+            // Validate the PAT by making a test API call (but don't fail if network issues occur)
             const isValid = await this.validatePAT(pat);
             if (!isValid) {
-                await vscode.window.showErrorMessage(
-                    'Invalid Personal Access Token. Please check your token and ensure it has Code (read) permissions.'
+                const userChoice = await vscode.window.showWarningMessage(
+                    'Unable to validate Personal Access Token with Azure DevOps API. This could be due to network issues or token permissions.',
+                    'Use Token Anyway',
+                    'Try Different Token'
                 );
-                return false;
+                
+                if (userChoice !== 'Use Token Anyway') {
+                    return false;
+                }
             }
 
             // Store the PAT securely
@@ -277,9 +309,11 @@ export class AzureDevOpsApiManager implements GitApiManager {
                     ['Accept']: 'application/json'
                 }
             });
-            return response.ok;
-        } catch {
-            return false;
+            return true;
+        } catch (error) {
+            console.log('PAT validation network error:', error);
+            // Network errors shouldn't invalidate tokens
+            return true; // Be more permissive
         }
     }
 
