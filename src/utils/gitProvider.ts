@@ -31,11 +31,6 @@ export interface RepositoryInfo {
 
 export interface GitApiManager {
     /**
-     * Get authenticated user information
-     */
-    getAuthenticatedUser(): Promise<any>;
-
-    /**
      * Get repository tree for a specific branch
      */
     getRepositoryTree(owner: string, repo: string, branch: string): Promise<GitTree>;

@@ -8,27 +8,6 @@ export class GitHubApiManager implements GitApiManager {
         return 'github';
     }
 
-    async getAuthenticatedUser(): Promise<any> {
-        const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
-        if (!session) {
-            throw new Error('GitHub authentication required');
-        }
-
-        const response = await fetch(`${this.baseUrl}/user`, {
-            headers: {
-                'Authorization': `Bearer ${session.accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'VS Code Promptitude Extension'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-        }
-
-        return response.json();
-    }
-
     async getRepositoryTree(owner: string, repo: string, branch: string = 'master'): Promise<GitTree> {
         const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
         if (!session) {
