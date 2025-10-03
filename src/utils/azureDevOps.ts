@@ -23,37 +23,7 @@ export class AzureDevOpsApiManager implements GitApiManager {
         return 'azure';
     }
 
-    async getAuthenticatedUser(organization?: string): Promise<any> {
-        // For getting user info, we can use any PAT (use first one or specified org)
-        const org = organization || (await this.getCachedOrganizations())[0] || 'default';
-        const headers = await this.getAuthHeaders(org);
-        
-        try {
-            // Get actual user profile from Azure DevOps
-            const response = await fetch('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=6.0', {
-                headers
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to get user profile: ${response.status} ${response.statusText}`);
-            }
-            
-            const profile = await response.json();
-            return {
-                login: profile.emailAddress || 'azure-user',
-                name: profile.displayName || 'Azure DevOps User',
-                id: profile.id
-            };
-        } catch (error) {
-            // Fallback to generic user object if profile fetch fails
-            return {
-                login: 'azure-user',
-                name: 'Azure DevOps User'
-            };
-        }
-    }
-
-    async getRepositoryTree(owner: string, repo: string, branch: string = 'main'): Promise<GitTree> {
+    async getRepositoryTree(owner: string, repo: string, branch: string): Promise<GitTree> {
         // Parse the owner to extract organization and project
         const { organization, project, baseUrl } = this.parseOwnerInfo(owner);
         
