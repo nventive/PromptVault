@@ -120,7 +120,7 @@ export class AzureDevOpsApiManager implements GitApiManager {
             if (response.status === 401) {
                 throw new Error('Azure DevOps authentication failed. Please check your Personal Access Token.');
             } else if (response.status === 403) {
-                throw new Error('Azure DevOpsAccess forbidden. Please ensure your PAT has Code (read) permissions for this file.');
+                throw new Error('Azure DevOps Access forbidden. Please ensure your PAT has Code (read) permissions for this file.');
             } else if (response.status === 404) {
                 throw new Error(`Azure DevOps File not found: ${path}`);
             }
