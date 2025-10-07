@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
 
-const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
@@ -41,31 +40,6 @@ export class FileSystemManager {
         }
     }
 
-    async isDirectory(dirPath: string): Promise<boolean> {
-        try {
-            const stats = await stat(dirPath);
-            return stats.isDirectory();
-        } catch {
-            return false;
-        }
-    }
-
-    async getDirectoryContents(dirPath: string): Promise<string[]> {
-        try {
-            return await readdir(dirPath);
-        } catch (error) {
-            throw new Error(`Failed to read directory ${dirPath}: ${error}`);
-        }
-    }
-
-    async copyFile(source: string, destination: string): Promise<void> {
-        const content = await this.readFileContent(source);
-        await this.writeFileContent(destination, content);
-    }
-
-    getRelativePath(from: string, to: string): string {
-        return path.relative(from, to);
-    }
 
     joinPath(...paths: string[]): string {
         return path.join(...paths);
@@ -75,15 +49,7 @@ export class FileSystemManager {
         return path.normalize(filePath);
     }
 
-    getExtension(filePath: string): string {
-        return path.extname(filePath);
-    }
-
     getBasename(filePath: string): string {
         return path.basename(filePath);
-    }
-
-    getDirname(filePath: string): string {
-        return path.dirname(filePath);
     }
 }

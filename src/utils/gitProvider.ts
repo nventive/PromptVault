@@ -1,13 +1,5 @@
 import * as vscode from 'vscode';
 
-export interface GitFile {
-    name: string;
-    path: string;
-    content?: string;
-    downloadUrl?: string;
-    type: 'file' | 'dir';
-}
-
 export interface GitTreeItem {
     path: string;
     mode: string;
