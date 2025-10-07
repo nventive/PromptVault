@@ -4,7 +4,7 @@
 
 ## 🎯 Overview
 
-The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot prompts, instructions, and templates from one or more Git repositories to your local VS Code user prompts directory. This ensures you always have access to the most up-to-date, peer-reviewed prompts across all your projects from multiple sources.
+The Promptitude Extension automatically synchronizes the latest GitHub Copilot prompts, instructions, and templates from one or more Git repositories to your local VS Code user prompts directory. This ensures you always have access to the most up-to-date, peer-reviewed prompts across all your projects from multiple sources.
 
 ## ✨ Features
 
@@ -12,7 +12,8 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 - **📦 Multiple Repositories**: Support for syncing from multiple Git repositories simultaneously
 - **🌍 Cross-Platform**: Works on macOS, Windows, and Linux
 - **⚙️ Configurable**: Customizable sync frequency and target directory
-- **🔐 Secure**: Uses your existing GitHub authentication from VS Code
+- **🔐 Secure**: Uses your existing GitHub authentication from VS Code and secure PAT storage for Azure DevOps
+- **🌐 Multi-Provider**: Supports both GitHub and Azure DevOps repositories
 - **📦 Read-Only**: Safe pull-only synchronization (no risk of overwriting repositories)
 - **🎨 User-Friendly**: Simple setup with minimal configuration required
 - **📊 Status Indicators**: Clear feedback on sync status and last update time
@@ -23,7 +24,8 @@ The Prompts Sync Extension automatically synchronizes the latest GitHub Copilot 
 ### Prerequisites
 
 - VS Code 1.70.0 or higher
-- GitHub authentication configured in VS Code
+- GitHub authentication configured in VS Code (for GitHub repositories)
+- Azure DevOps Personal Access Token (for Azure DevOps repositories)
 - Access to a git repository with prompts and configuration files
 
 ### Installation
@@ -88,6 +90,8 @@ The extension supports syncing from multiple Git repositories simultaneously. Th
     - Click "Add Item" to add each repository using one of the following formats:
        - `https://github.com/your-org/prompts` (defaults to branch `main`)
        - `https://github.com/your-org/prompts|develop` (explicit branch)
+       - `https://dev.azure.com/org/project/_git/repo` (Azure DevOps modern format)
+       - `https://org.visualstudio.com/project/_git/repo` (Azure DevOps legacy format)
 
 2. **Using JSON Configuration**:
    ```json
@@ -119,7 +123,7 @@ Once configured, the extension works automatically based on your sync frequency 
 You can manually trigger a sync at any time:
 
 1. Open the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
-2. Type "Prompts Sync: Sync Now"
+2. Type "Promptitude: Sync Now"
 3. Press Enter
 
 ### Status Bar
@@ -135,7 +139,7 @@ The extension adds a status bar item showing:
 Check detailed sync information:
 
 1. Open the command palette
-2. Type "Prompts Sync: Show Status"
+2. Type "Promptitude: Show Status"
 3. View sync history, errors, and configuration details
 
 ## 📁 Synced Content
@@ -152,6 +156,26 @@ All files are placed directly in the `User/prompts/` directory, removing any sub
 
 ## 🔧 Troubleshooting
 
+Access these commands through the VS Code Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`):
+
+### General Commands
+
+| Command | Description |
+|---------|-------------|
+| **Promptitude: Sync Now** | Manually trigger an immediate sync of all configured repositories |
+| **Promptitude: Show Status** | Display extension status, configuration, and authentication information |
+| **Promptitude: Open Prompts Folder** | Open the local prompts directory in your system file explorer |
+
+### Azure DevOps Authentication Management
+
+| Command | Description |
+|---------|-------------|
+| **Promptitude: Setup Azure DevOps Authentication** | Configure authentication for Azure DevOps repositories (first-time setup) |
+| **Promptitude: Update Azure DevOps Personal Access Token** | Update or replace an existing Azure DevOps PAT (useful when tokens expire) |
+| **Promptitude: Clear Azure DevOps Authentication** | Remove stored Azure DevOps authentication (useful for switching accounts or troubleshooting) |
+
+
+
 ### Common Issues
 
 #### Sync Fails with Authentication Error
@@ -163,6 +187,21 @@ All files are placed directly in the `User/prompts/` directory, removing any sub
 1. Ensure you're signed into GitHub in VS Code (`View > Command Palette > GitHub: Sign In`)
 2. Verify you have access to the repository
 3. Check your internet connection
+
+#### Azure DevOps Authentication Issues
+
+**Problem**: Extension can't access Azure DevOps repository (400/401/403 errors)
+
+**Solutions**:
+
+1. Ensure your Personal Access Token (PAT) has the correct permissions:
+   - Minimum required: `Code (read)` permission
+   - For organization repositories: ensure PAT has access to the specific organization/project
+2. Verify the repository URL format is correct:
+   - Modern: `https://dev.azure.com/org/project/_git/repo`
+   - Legacy: `https://org.visualstudio.com/project/_git/repo`
+3. Check that the PAT hasn't expired
+4. Use the "Setup Azure DevOps" button in authentication prompts to re-enter your PAT
 
 #### Prompts Directory Not Found
 
@@ -191,15 +230,16 @@ Enable debug logging:
 1. Open VS Code Settings
 2. Search for "promptitude.debug"
 3. Enable debug mode
-4. Check the "Prompts Sync" output channel for detailed logs
+4. Check the "Promptitude" output channel for detailed logs
 
 ## 🔒 Security & Privacy
 
 - **Read-Only Access**: The extension only pulls content from the repository
 - **No Data Collection**: No usage data or personal information is collected
 - **GitHub Authentication**: Uses VS Code's built-in GitHub authentication
+- **Azure DevOps Authentication**: Securely stores Personal Access Tokens using VS Code's SecretStorage
 - **Local Storage**: All prompts are stored locally on your machine
-- **No Network Requests**: Only communicates with GitHub for repository access
+- **No Network Requests**: Only communicates with GitHub/Azure DevOps for repository access
 
 ## 🛠️ Development
 

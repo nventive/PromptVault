@@ -4,7 +4,7 @@ export class Logger {
     private outputChannel: vscode.OutputChannel;
 
     constructor() {
-        this.outputChannel = vscode.window.createOutputChannel('Prompts Sync');
+        this.outputChannel = vscode.window.createOutputChannel('Promptitude');
     }
 
     private get isDebugEnabled(): boolean {
@@ -18,7 +18,7 @@ export class Logger {
         this.outputChannel.appendLine(logMessage);
         
         // Also log to console for debugging
-        console.log(`Prompts Sync: ${logMessage}`);
+        console.log(`Promptitude: ${logMessage}`);
     }
 
     debug(message: string): void {

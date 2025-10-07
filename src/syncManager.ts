@@ -3,8 +3,10 @@ import { ConfigManager } from './configManager';
 import { StatusBarManager, SyncStatus } from './statusBarManager';
 import { Logger } from './utils/logger';
 import { NotificationManager } from './utils/notifications';
-import { GitHubApiManager, GitHubTreeItem } from './utils/github';
+import { GitApiManager, GitTreeItem } from './utils/gitProvider';
+import { GitProviderFactory } from './utils/gitProviderFactory';
 import { FileSystemManager } from './utils/fileSystem';
+import { AzureDevOpsApiManager } from './utils/azureDevOps';
 import { REPO_SYNC_CHAT_MODE_PATH, REPO_SYNC_INSTRUCTIONS_PATH, REPO_SYNC_PROMPT_PATH,  } from './constant';
 export interface SyncResult {
     success: boolean;
@@ -31,21 +33,24 @@ export class SyncManager {
     private isInitialized = false;
     private context: vscode.ExtensionContext | null = null;
     private notifications: NotificationManager;
-    private github: GitHubApiManager;
     private fileSystem: FileSystemManager;
+    private gitProviders: Map<string, GitApiManager> = new Map();
 
     constructor(
         private config: ConfigManager,
         private statusBar: StatusBarManager,
         private logger: Logger
     ) {
-        this.notifications = new NotificationManager();
-        this.github = new GitHubApiManager();
+        this.notifications = new NotificationManager(this.config, undefined, this.logger);
         this.fileSystem = new FileSystemManager();
     }
 
     async initialize(context: vscode.ExtensionContext): Promise<void> {
         this.context = context;
+        
+        // Update notification manager with extension context
+        this.notifications = new NotificationManager(this.config, this.context, this.logger);
+        
         this.logger.info('Initializing SyncManager...');
 
         // Listen for configuration changes
@@ -79,19 +84,6 @@ export class SyncManager {
         this.statusBar.setStatus(SyncStatus.Syncing, 'Syncing...');
 
         try {
-            // Check authentication
-            const isAuthenticated = await this.github.checkAuthentication();
-            if (!isAuthenticated) {
-                this.logger.warn('GitHub authentication required');
-                await this.notifications.showAuthenticationRequired();
-                
-                // Try to authenticate
-                const authSuccess = await this.github.requestAuthentication();
-                if (!authSuccess) {
-                    throw new Error('GitHub authentication failed');
-                }
-            }
-
             const repositories = this.config.repositories;
             this.logger.info(`Syncing from ${repositories.length} repositories`);
 
@@ -135,7 +127,7 @@ export class SyncManager {
         }
     }
 
-    private filterRelevantFiles(tree: GitHubTreeItem[]): GitHubTreeItem[] {
+    private filterRelevantFiles(tree: GitTreeItem[]): GitTreeItem[] {
         const allowedPaths: string[] = [];
         
         // Build list of allowed paths based on settings
@@ -148,7 +140,6 @@ export class SyncManager {
         if (this.config.syncPrompt) {
             allowedPaths.push(REPO_SYNC_PROMPT_PATH);
         }
-        console.log('Allowed paths for sync:', allowedPaths);
 
         // If no types are selected, return empty array
         if (allowedPaths.length === 0) {
@@ -156,17 +147,31 @@ export class SyncManager {
             return [];
         }
 
-        return tree.filter(item => {
-            if (item.type !== 'blob') {
-                return false;
-            }
-
-            return allowedPaths.some(path => item.path.startsWith(path)) &&
-                   (item.path.endsWith('.md') || item.path.endsWith('.txt'));
+        const filtered = tree.filter(item => {
+            const isBlob = item.type === 'blob';
+            
+            // Normalize path separators and remove leading slash for comparison
+            const normalizedPath = item.path.replace(/\\/g, '/').replace(/^\/+/, '');
+            
+            const matchesPath = allowedPaths.some(path => {
+                const normalizedAllowedPath = path.replace(/\\/g, '/').replace(/^\/+/, '');
+                return normalizedPath.startsWith(normalizedAllowedPath);
+            });
+            
+            // Support more file extensions including .prompt.md
+            const isRelevantFile = item.path.endsWith('.md') || 
+                                 item.path.endsWith('.txt');
+            
+            this.logger.debug(`  ${item.path}: blob=${isBlob}, matchesPath=${matchesPath}, isRelevantFile=${isRelevantFile} (normalized: ${normalizedPath})`);
+            
+            return isBlob && matchesPath && isRelevantFile;
         });
+        
+        console.log(`Filtered result: ${filtered.length} files out of ${tree.length} total`);
+        return filtered;
     }
 
-    private async syncFiles(owner: string, repo: string, files: GitHubTreeItem[], branch: string): Promise<number> {
+    private async syncFiles(gitApi: GitApiManager, owner: string, repo: string, files: GitTreeItem[], branch: string): Promise<number> {
         const promptsDir = this.config.getPromptsDirectory();
         await this.fileSystem.ensureDirectoryExists(promptsDir);
         
@@ -177,7 +182,7 @@ export class SyncManager {
             let content = null;
 
             try {
-                content = await this.github.getFileContent(owner, repo, file.path, branch);
+                content = await gitApi.getFileContent(owner, repo, file.path, branch);
             } catch (error) {
                 // An error occurred while retrieving file content, Return here
                 this.logger.warn(`Failed to fetch content for ${file.path}: ${error}`);
@@ -227,13 +232,46 @@ export class SyncManager {
             try {
                 this.logger.debug(`Syncing repository: ${repoUrl}`);
                 
+                // Get or create Git API manager for this repository
+                let gitApi = this.gitProviders.get(repoUrl);
+                if (!gitApi) {
+                    if (!this.context) {
+                        throw new Error('Extension context not available for git provider initialization');
+                    }
+                    gitApi = GitProviderFactory.createFromUrl(repoUrl, this.context);
+                    this.gitProviders.set(repoUrl, gitApi);
+                }
+
+                // Check authentication for this provider
+                // First check if we’re already authenticated
+                let isAuthenticated = await gitApi.checkAuthentication();
+                if (!isAuthenticated) {
+                    this.logger.warn(`${gitApi.getProviderName()} authentication required for ${repoUrl}`);
+                    await this.notifications.showAuthenticationRequired();
+
+                    // Re-check after the notification flow before prompting again
+                    isAuthenticated = await gitApi.checkAuthentication();
+                    if (!isAuthenticated) {
+                        const authSuccess = await gitApi.requestAuthentication();
+                        if (!authSuccess) {
+                            throw new Error(`${gitApi.getProviderName()} authentication failed`);
+                        }
+                    }
+                }
+                
                 // Parse repository URL
-                const { owner, repo } = this.github.parseRepositoryUrl(repoUrl);
+                const { owner, repo } = gitApi.parseRepositoryUrl(repoUrl);
                 this.logger.debug(`Syncing from ${owner}/${repo} branch ${branch}`);
 
                 // Get repository tree
-                const tree = await this.github.getRepositoryTree(owner, repo, branch);
+                const tree = await gitApi.getRepositoryTree(owner, repo, branch);
                 this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
+                
+                // Debug: Log all items in the tree to see what's actually there
+                console.log('Repository tree contents:');
+                tree.tree.forEach((item, index) => {
+                    console.log(`  ${index + 1}. ${item.path} (type: ${item.type})`);
+                });
 
                 // Filter relevant files
                 const relevantFiles = this.filterRelevantFiles(tree.tree);
@@ -253,7 +291,7 @@ export class SyncManager {
                 this.logger.debug(`Found ${relevantFiles.length} relevant files to sync for ${repoUrl}`);
 
                 // Sync files
-                const itemsUpdated = await this.syncFiles(owner, repo, relevantFiles, branch);
+                const itemsUpdated = await this.syncFiles(gitApi, owner, repo, relevantFiles, branch);
                 
                 results.push({
                     repository: repoUrl,
@@ -344,6 +382,30 @@ export class SyncManager {
         const repositories = this.config.repositories;
         const repoConfigs = this.config.repositoryConfigs;
         
+        // Check authentication status for different providers
+        const usedProviders = this.config.getUsedProviders();
+        const authStatus: string[] = [];
+        
+        if (usedProviders.has('github')) {
+            try {
+                const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
+                authStatus.push(`GitHub: ${session ? '✅ Authenticated' : '❌ Not authenticated'}`);
+            } catch {
+                authStatus.push('GitHub: ❌ Not authenticated');
+            }
+        }
+        
+        if (usedProviders.has('azure') && this.context) {
+            try {
+                const azureManager = new AzureDevOpsApiManager(this.context);
+                const patCount = await azureManager.getPATCount();
+                const cachedOrgs = await azureManager.getCachedOrganizations();
+                authStatus.push(`Azure DevOps: ${patCount > 0 ? `✅ ${patCount} PAT(s) configured` : '❌ No PATs configured'}${cachedOrgs.length > 0 ? ` (${cachedOrgs.length} org(s) cached)` : ''}`);
+            } catch {
+                authStatus.push('Azure DevOps: ❌ No PATs configured');
+            }
+        }
+        
         const items = [
             'Sync Status',
             '──────────',
@@ -354,11 +416,24 @@ export class SyncManager {
             `Sync on Startup: ${this.config.syncOnStartup ? '✅' : '❌'}`,
             `Show Notifications: ${this.config.showNotifications ? '✅' : '❌'}`,
             `Debug Mode: ${this.config.debug ? '✅' : '❌'}`,
+        ];
+        
+        // Add authentication section if there are providers to show
+        if (authStatus.length > 0) {
+            items.push(
+                '',
+                'Authentication',
+                '──────────────'
+            );
+            authStatus.forEach(status => items.push(status));
+        }
+
+        items.push(
             '',
             'Repositories',
             '────────────',
             `Count: ${repositories.length}`,
-        ];
+        );
 
         // Add each repository
         repoConfigs.forEach((rc, index) => {
@@ -376,14 +451,24 @@ export class SyncManager {
             '',
             'Commands',
             '────────',
-            '• Sync Now: Ctrl+Shift+P → "Prompts Sync: Sync Now"',
-            '• Show Status: Ctrl+Shift+P → "Prompts Sync: Show Status"',
-            '• Configure: File → Preferences → Settings → Search "Prompts Sync"'
+            '• Sync Now: Ctrl+Shift+P → "Promptitude: Sync Now"',
+            '• Show Status: Ctrl+Shift+P → "Promptitude: Show Status"',
+            '• Open Prompts Folder: Ctrl+Shift+P → "Promptitude: Open Prompts Folder"',
+            '',
+            'Authentication Management',
+            '───────────────────────',
+            '• Add Azure DevOps PAT: Ctrl+Shift+P → "Promptitude: Add Azure DevOps Personal Access Token"',
+            '• Remove Azure DevOps PAT: Ctrl+Shift+P → "Promptitude: Remove Azure DevOps Personal Access Token(s)"',
+            '• Clear Azure DevOps Cache: Ctrl+Shift+P → "Promptitude: Clear Azure DevOps Authentication Cache"',
+            '',
+            'Configuration',
+            '─────────────',
+            '• Settings: File → Preferences → Settings → Search "Promptitude"'
         );
 
         const quickPick = vscode.window.createQuickPick();
         quickPick.items = items.map(item => ({ label: item }));
-        quickPick.title = 'Prompts Sync Extension Status';
+        quickPick.title = 'Promptitude Extension Status';
         quickPick.placeholder = 'Extension status and configuration';
         quickPick.canSelectMany = false;
         
