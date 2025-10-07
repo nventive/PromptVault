@@ -35,11 +35,10 @@ export class AzureDevOpsApiManager implements GitApiManager {
         // For dev.azure.com, the format is: baseUrl/org/project/_apis/git/repositories/repo/items
         let url: string;
         if (baseUrl.includes('visualstudio.com')) {
-            // URL encode the project name to handle spaces and special characters
-            const encodedProject = encodeURIComponent(project);
-            url = `${baseUrl}/${encodedProject}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
+            // Legacy visualstudio.com format: baseUrl/project/_apis/...
+            url = `${baseUrl}/${encodeURIComponent(project)}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
         } else {
-            // URL encode both organization and project name
+            // Modern dev.azure.com format: baseUrl/org/project/_apis/...
             const encodedOrganization = encodeURIComponent(organization);
             const encodedProject = encodeURIComponent(project);
             url = `${baseUrl}/${encodedOrganization}/${encodedProject}/_apis/git/repositories/${repo}/items?recursionLevel=Full&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
@@ -99,11 +98,10 @@ export class AzureDevOpsApiManager implements GitApiManager {
         // For dev.azure.com, the format is: baseUrl/org/project/_apis/git/repositories/repo/items
         let url: string;
         if (baseUrl.includes('visualstudio.com')) {
-            // URL encode the project name to handle spaces and special characters
-            const encodedProject = encodeURIComponent(project);
-            url = `${baseUrl}/${encodedProject}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
+            // Legacy visualstudio.com format: baseUrl/project/_apis/...
+            url = `${baseUrl}/${encodeURIComponent(project)}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
         } else {
-            // URL encode both organization and project name
+            // Modern dev.azure.com format: baseUrl/org/project/_apis/...
             const encodedOrganization = encodeURIComponent(organization);
             const encodedProject = encodeURIComponent(project);
             url = `${baseUrl}/${encodedOrganization}/${encodedProject}/_apis/git/repositories/${repo}/items?path=${encodeURIComponent(path)}&versionDescriptor.version=${branch}&versionDescriptor.versionType=branch&api-version=7.0`;
@@ -140,9 +138,7 @@ export class AzureDevOpsApiManager implements GitApiManager {
             // Modern dev.azure.com format: https://dev.azure.com/org/project/_git/repo
             { pattern: /https:\/\/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_git\/([^\/\s]+)/, format: 'modern' },
             // Legacy visualstudio.com with project: https://org.visualstudio.com/project/_git/repo
-            { pattern: /https:\/\/([^\/]+)\.visualstudio\.com\/([^\/]+)\/_git\/([^\/\s]+)/, format: 'legacy-with-project' },
-            // Legacy visualstudio.com without project: https://org.visualstudio.com/_git/repo
-            { pattern: /https:\/\/([^\/]+)\.visualstudio\.com\/_git\/([^\/\s]+)/, format: 'legacy-no-project' }
+            { pattern: /https:\/\/([^\/]+)\.visualstudio\.com\/([^\/]+)\/_git\/([^\/\s]+)/, format: 'legacy-with-project' }
         ];
 
         for (const { pattern, format } of azurePatterns) {
@@ -166,13 +162,10 @@ export class AzureDevOpsApiManager implements GitApiManager {
                     repo = match[3];
                     baseUrl = `https://${organization}.visualstudio.com`;
                 } else {
-                    // https://org.visualstudio.com/_git/repo (project and repo are the same)
-                    organization = match[1];
-                    project = match[2]; // In this case, project name = repo name
-                    repo = match[2];
-                    baseUrl = `https://${organization}.visualstudio.com`;
+                    // This should never happen, but guard against future pattern additions
+                    throw new Error(`Unsupported Azure DevOps URL format: ${format}`);
                 }
-                
+
                 // Store organization, project, and baseUrl in the owner field for later use
                 return {
                     owner: `${organization}|${project}|${baseUrl}`,
