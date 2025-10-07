@@ -196,8 +196,8 @@ export class AzureDevOpsApiManager implements GitApiManager {
 
     async checkAuthentication(): Promise<boolean> {
         try {
-            const pat = await this.getPersonalAccessToken();
-            return !!pat;
+            const pats = await this.getAllPATs();
+            return pats.length > 0;
         } catch {
             return false;
         }
@@ -414,14 +414,6 @@ export class AzureDevOpsApiManager implements GitApiManager {
     }
 
     /**
-     * Check if any PAT is stored
-     */
-    async hasValidPAT(): Promise<boolean> {
-        const pats = await this.getAllPATs();
-        return pats.length > 0 && pats.every(pat => pat.length >= AzureDevOpsApiManager.minPatLength);
-    }
-
-    /**
      * Get count of stored PATs
      */
     async getPATCount(): Promise<number> {
@@ -435,30 +427,5 @@ export class AzureDevOpsApiManager implements GitApiManager {
     async getCachedOrganizations(): Promise<string[]> {
         const cache = await this.getCache();
         return Object.keys(cache);
-    }
-
-    /**
-     * Securely retrieve the PAT from VS Code's SecretStorage
-     * @deprecated Use getAllPATs() instead
-     */
-    private async getPersonalAccessToken(): Promise<string | undefined> {
-        const pats = await this.getAllPATs();
-        return pats.length > 0 ? pats[0] : undefined;
-    }
-
-    /**
-     * Securely store the PAT using VS Code's SecretStorage
-     * @deprecated Use addPAT() instead
-     */
-    private async storePersonalAccessToken(pat: string): Promise<void> {
-        await this.addPAT(pat);
-    }
-
-    /**
-     * Remove the stored PAT (for logout/cleanup)
-     * @deprecated Use clearAllPATs() instead
-     */
-    async clearPersonalAccessToken(): Promise<void> {
-        await this.clearAllPATs();
     }
 }
