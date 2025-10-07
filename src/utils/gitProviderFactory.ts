@@ -57,18 +57,4 @@ export class GitProviderFactory {
         
         return 'unknown';
     }
-
-    /**
-     * Get all supported providers
-     */
-    static getSupportedProviders(): GitProvider[] {
-        return ['github', 'azure'];
-    }
-
-    /**
-     * Check if a provider is supported
-     */
-    static isProviderSupported(provider: GitProvider): boolean {
-        return GitProviderFactory.getSupportedProviders().includes(provider);
-    }
 }
