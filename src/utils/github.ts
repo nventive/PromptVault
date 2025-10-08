@@ -1,8 +1,14 @@
 import * as vscode from 'vscode';
 import { GitApiManager, GitTree, RepositoryInfo } from './gitProvider';
+import { Logger } from './logger';
 
 export class GitHubApiManager implements GitApiManager {
     private baseUrl = 'https://api.github.com';
+    private logger: Logger;
+
+    constructor(logger: Logger = Logger.get('GitHubApi')) {
+        this.logger = logger;
+    }
 
     getProviderName(): string {
         return 'github';
@@ -51,7 +57,7 @@ export class GitHubApiManager implements GitApiManager {
         if (!session) {
             throw new Error('GitHub authentication required');
         }
-        console.log(`Fetching file content from ${owner}/${repo}/${path} on branch ${branch}`);
+        this.logger.debug(`Fetching file content from ${owner}/${repo}/${path} on branch ${branch}`);
         const response = await fetch(`${this.baseUrl}/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {
             headers: {
                 ['Authorization']: `Bearer ${session.accessToken}`,
