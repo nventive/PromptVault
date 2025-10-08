@@ -30,7 +30,6 @@ export interface MultiRepositorySyncResult {
 
 export class SyncManager {
     private timer: NodeJS.Timeout | null = null;
-    private isInitialized = false;
     private context: vscode.ExtensionContext | null = null;
     private notifications: NotificationManager;
     private fileSystem: FileSystemManager;
@@ -39,7 +38,7 @@ export class SyncManager {
     constructor(
         private config: ConfigManager,
         private statusBar: StatusBarManager,
-        private logger: Logger
+        private logger: Logger = Logger.get('SyncManager')
     ) {
         this.notifications = new NotificationManager(this.config, undefined, this.logger);
         this.fileSystem = new FileSystemManager();
@@ -69,7 +68,6 @@ export class SyncManager {
 
         // Schedule periodic syncs
         this.scheduleNextSync();
-        this.isInitialized = true;
         
         this.logger.info('SyncManager initialized successfully');
     }
@@ -161,13 +159,14 @@ export class SyncManager {
             // Support more file extensions including .prompt.md
             const isRelevantFile = item.path.endsWith('.md') || 
                                  item.path.endsWith('.txt');
-            
-            this.logger.debug(`  ${item.path}: blob=${isBlob}, matchesPath=${matchesPath}, isRelevantFile=${isRelevantFile} (normalized: ${normalizedPath})`);
-            
+            if(isRelevantFile) {
+                this.logger.debug(`  ${item.path}: blob=${isBlob}, matchesPath=${matchesPath}, (normalized: ${normalizedPath})`);
+            }
+
             return isBlob && matchesPath && isRelevantFile;
         });
         
-        console.log(`Filtered result: ${filtered.length} files out of ${tree.length} total`);
+        this.logger.debug(`Filtered result: ${filtered.length} files out of ${tree.length} total`);
         return filtered;
     }
 
@@ -267,11 +266,6 @@ export class SyncManager {
                 const tree = await gitApi.getRepositoryTree(owner, repo, branch);
                 this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
                 
-                // Debug: Log all items in the tree to see what's actually there
-                console.log('Repository tree contents:');
-                tree.tree.forEach((item, index) => {
-                    console.log(`  ${index + 1}. ${item.path} (type: ${item.type})`);
-                });
 
                 // Filter relevant files
                 const relevantFiles = this.filterRelevantFiles(tree.tree);
@@ -509,7 +503,6 @@ export class SyncManager {
             this.timer = null;
         }
 
-        this.isInitialized = false;
         this.logger.info('SyncManager disposed');
     }
 }
