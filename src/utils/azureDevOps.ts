@@ -11,12 +11,14 @@ export class AzureDevOpsApiManager implements GitApiManager {
     private static readonly cacheStorageKey = 'promptitude.azureDevOps.patCache';
     private static readonly minPatLength = 8; // Reduced from 20 to be more permissive
     private extensionContext: vscode.ExtensionContext;
+    private logger: Logger;
 
-    constructor(context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext, logger: Logger = Logger.get('AzureDevOpsApi')) {
         if (!context) {
             throw new Error('Extension context is required for Azure DevOps authentication');
         }
         this.extensionContext = context;
+        this.logger = logger;
     }
 
     getProviderName(): string {
@@ -258,24 +260,24 @@ export class AzureDevOpsApiManager implements GitApiManager {
             const headers = this.buildAuthHeaders(pats[cachedIndex]);
             
             if (await this.validateHeaders(headers, organization)) {
-                console.log(`[Promptitude] Cache hit: PAT validated for '${organization}'`);
+                this.logger.debug(`Cache hit: PAT validated for '${organization}'`);
                 return headers;
             }
             
             // Cache was stale, remove this entry
-            console.log(`[Promptitude] Cache miss: cached PAT no longer valid for '${organization}'`);
+            this.logger.debug(`Cache miss: cached PAT no longer valid for '${organization}'`);
             delete cache[organization];
             await this.saveCache(cache);
         }
 
         // Try all PATs
-        console.log(`[Promptitude] Trying all PATs (${pats.length} total) for organization '${organization}'`);
+        this.logger.debug(`Trying all PATs (${pats.length} total) for organization '${organization}'`);
         for (let i = 0; i < pats.length; i++) {
-            console.log(`[Promptitude] Attempting PAT ${i + 1}/${pats.length} for organization '${organization}'`);
+            this.logger.debug(`Attempting PAT ${i + 1}/${pats.length} for organization '${organization}'`);
             const headers = this.buildAuthHeaders(pats[i]);
             
             if (await this.validateHeaders(headers, organization)) {
-                console.log(`[Promptitude] Success: a PAT successfully validated for '${organization}', updating cache`);
+                this.logger.debug(`Success: a PAT successfully validated for '${organization}', updating cache`);
                 // Cache successful PAT
                 cache[organization] = i;
                 await this.saveCache(cache);
@@ -320,7 +322,7 @@ export class AzureDevOpsApiManager implements GitApiManager {
             
             return legacyResponse.ok;
         } catch (error) {
-            console.log(`[Promptitude] Validation failed for organization '${organization}': ${error}`);
+            this.logger.debug(`Validation failed for organization '${organization}': ${error}`);
             return false;
         }
     }

@@ -1,10 +1,29 @@
 import * as vscode from 'vscode';
 
 export class Logger {
-    private outputChannel: vscode.OutputChannel;
+    // Use a single shared OutputChannel across all Logger instances
+    private static sharedChannel: vscode.OutputChannel | undefined;
+    private static scopedCache: Map<string, Logger> = new Map();
+    private scope?: string;
+    private get outputChannel(): vscode.OutputChannel {
+        if (!Logger.sharedChannel) {
+            Logger.sharedChannel = vscode.window.createOutputChannel('Promptitude');
+        }
+        return Logger.sharedChannel;
+    }
 
-    constructor() {
-        this.outputChannel = vscode.window.createOutputChannel('Promptitude');
+    constructor(scope?: string) {
+        this.scope = scope;
+    }
+
+    static get(scope: string): Logger {
+        const existing = Logger.scopedCache.get(scope);
+        if (existing) {
+            return existing;
+        }
+        const logger = new Logger(scope);
+        Logger.scopedCache.set(scope, logger);
+        return logger;
     }
 
     private get isDebugEnabled(): boolean {
@@ -12,13 +31,24 @@ export class Logger {
     }
 
     private log(level: string, message: string): void {
-        const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] [${level}] ${message}`;
+        const timestamp = this.formatTimestamp(new Date());
+        const scoped = this.scope ? `[${this.scope}] ${message}` : message;
+        const logMessage = `[${timestamp}] [${level}] ${scoped}`;
         
         this.outputChannel.appendLine(logMessage);
-        
-        // Also log to console for debugging
-        console.log(`Promptitude: ${logMessage}`);
+    }
+
+    private formatTimestamp(date: Date): string {
+        const pad = (n: number, width: number = 2) => n.toString().padStart(width, '0');
+        const year = date.getFullYear();
+        const month = pad(date.getMonth() + 1);
+        const day = pad(date.getDate());
+        const hours = pad(date.getHours());
+        const minutes = pad(date.getMinutes());
+        const seconds = pad(date.getSeconds());
+        const millis = pad(date.getMilliseconds(), 3);
+        // Format: 2025-10-08 01:16:21.132 (local time)
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${millis}`;
     }
 
     debug(message: string): void {
@@ -46,11 +76,13 @@ export class Logger {
         this.log('ERROR', errorMessage);
     }
 
-    show(): void {
-        this.outputChannel.show();
+    show(preserveFocus: boolean = false): void {
+        this.outputChannel.show(preserveFocus);
     }
 
-    dispose(): void {
-        this.outputChannel.dispose();
+    static disposeSharedChannel(): void {
+        Logger.sharedChannel?.dispose();
+        Logger.sharedChannel = undefined;
+        Logger.scopedCache.clear();
     }
 }

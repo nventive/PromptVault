@@ -5,17 +5,31 @@ import { ConfigManager } from './configManager';
 import { Logger } from './utils/logger';
 import { AzureDevOpsApiManager } from './utils/azureDevOps';
 
+
 let syncManager: SyncManager;
 let statusBarManager: StatusBarManager;
 let logger: Logger;
 
 export function activate(context: vscode.ExtensionContext) {
-    logger = new Logger();
+    logger = Logger.get('Extension');
     logger.info('Promptitude Extension is activating...');
+
+    // If debugging and a debugger is attached, auto-select the Output channel without stealing focus
+    try {
+        // Dynamically import inspector to avoid bundling issues; optional behavior
+        const inspector = require('inspector');
+        const debuggerAttached = !!inspector.url();
+        if (debuggerAttached) {
+            // Show output channel but preserve focus (don't steal keyboard focus)
+            logger.show(true);
+        }
+    } catch {
+        // Ignore if inspector isn't available
+    }
 
     const configManager = new ConfigManager();
     statusBarManager = new StatusBarManager();
-    syncManager = new SyncManager(configManager, statusBarManager, logger);
+    syncManager = new SyncManager(configManager, statusBarManager);
 
     // Register commands
     const syncNowCommand = vscode.commands.registerCommand('promptitude.syncNow', async () => {
@@ -157,4 +171,5 @@ export function deactivate() {
     logger?.info('Promptitude Extension is deactivating...');
     syncManager?.dispose();
     statusBarManager?.dispose();
+    Logger.disposeSharedChannel();
 }

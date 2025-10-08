@@ -2,6 +2,12 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
+## vNext
+
+### Changed
+
+- Enhanced logging and removed console.logs
+
 ## [1.4.0] - 2025-10-03
 
 ### Added
