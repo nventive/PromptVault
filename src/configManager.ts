@@ -130,7 +130,7 @@ export class ConfigManager {
             if (this.debug) {
                 console.log(`[Promptitude] ✅ Profile-specific path detected: ${detectedProfilePath}`);
             }
-            return `${detectedProfilePath}/prompts`;
+            return path.join(detectedProfilePath, 'prompts');
         }
 
         console.log('[Promptitude] No profile detected, checking Extension API paths...');
@@ -146,7 +146,7 @@ export class ConfigManager {
                 if (this.debug) {
                     console.log(`[Promptitude] ✅ Profile detected via storageUri: ${profilePath}`);
                 }
-                return `${profilePath}/prompts`;
+                return path.join(profilePath, 'prompts');
             }
         }
 
@@ -161,7 +161,7 @@ export class ConfigManager {
             if (this.debug) {
                 console.log(`[Promptitude] Using default User directory: ${globalProfilePath}`);
             }
-            return `${globalProfilePath}/prompts`;
+            return path.join(globalProfilePath, 'prompts');
         }
 
         // Final fallback to hardcoded paths (should rarely be needed)
