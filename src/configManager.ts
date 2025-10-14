@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { GitProviderFactory } from './utils/gitProviderFactory';
 import { GitProvider } from './utils/gitProvider';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as process from 'process';
 
 export interface SyncFrequency {
     startup: number;
@@ -20,25 +24,6 @@ export class ConfigManager {
     };
 
     private extensionContext?: vscode.ExtensionContext;
-
-    /**
-     * Safely access Node.js require without using eval
-     * In VS Code extension context, require is available globally
-     */
-    private getNodeRequire(): NodeRequire {
-        // First try to get require from globalThis
-        if (typeof (globalThis as any).require === 'function') {
-            return (globalThis as any).require;
-        }
-        
-        // In Node.js/VS Code extension context, require is available globally
-        // TypeScript doesn't know about it in browser contexts, so we check at runtime
-        if (typeof require !== 'undefined') {
-            return require;
-        }
-        
-        throw new Error('Node.js require is not available in this environment');
-    }
 
     /**
      * Set the extension context to enable profile-aware paths
@@ -219,12 +204,6 @@ export class ConfigManager {
      */
     private storageJsonExists(): boolean {
         try {
-            const nodeRequire = this.getNodeRequire();
-            const os = nodeRequire('os');
-            const path = nodeRequire('path');
-            const fs = nodeRequire('fs');
-            const process = nodeRequire('process');
-
             let storageJsonPath: string;
             switch (process.platform) {
                 case 'win32':
@@ -253,12 +232,6 @@ export class ConfigManager {
      */
     private detectProfileFromStorageJson(): string | null {
         try {
-            const nodeRequire = this.getNodeRequire();
-            const os = nodeRequire('os');
-            const path = nodeRequire('path');
-            const fs = nodeRequire('fs');
-            const process = nodeRequire('process');
-
             // Get the storage.json path based on platform
             let storageJsonPath: string;
             switch (process.platform) {
@@ -380,12 +353,6 @@ export class ConfigManager {
      */
     private detectProfileFromEnvironment(): string | null {
         try {
-            const nodeRequire = this.getNodeRequire();
-            const process = nodeRequire('process');
-            const os = nodeRequire('os');
-            const path = nodeRequire('path');
-            const fs = nodeRequire('fs');
-
             console.log(`[Promptitude] Attempting profile detection from VS Code storage...`);
             console.log(`[Promptitude] Process platform: ${process.platform}`);
 
@@ -548,11 +515,6 @@ export class ConfigManager {
      * Get the base User path for the current platform
      */
     private getBaseUserPath(): string {
-        const nodeRequire = this.getNodeRequire();
-        const os = nodeRequire('os');
-        const path = nodeRequire('path');
-        const process = nodeRequire('process');
-
         switch (process.platform) {
             case 'win32':
                 return path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User');
@@ -571,13 +533,7 @@ export class ConfigManager {
     private getFallbackPromptsDirectory(): string {
         console.log('[Promptitude] Using fallback hardcoded prompts directory paths');
 
-        // Use dynamic import approach that works in Node.js environment
         try {
-            const nodeRequire = this.getNodeRequire();
-            const os = nodeRequire('os');
-            const path = nodeRequire('path');
-            const process = nodeRequire('process');
-
             let promptsPath: string;
             switch (process.platform) {
                 case 'win32':
