@@ -22,6 +22,25 @@ export class ConfigManager {
     private extensionContext?: vscode.ExtensionContext;
 
     /**
+     * Safely access Node.js require without using eval
+     * In VS Code extension context, require is available globally
+     */
+    private getNodeRequire(): NodeRequire {
+        // First try to get require from globalThis
+        if (typeof (globalThis as any).require === 'function') {
+            return (globalThis as any).require;
+        }
+        
+        // In Node.js/VS Code extension context, require is available globally
+        // TypeScript doesn't know about it in browser contexts, so we check at runtime
+        if (typeof require !== 'undefined') {
+            return require;
+        }
+        
+        throw new Error('Node.js require is not available in this environment');
+    }
+
+    /**
      * Set the extension context to enable profile-aware paths
      */
     setExtensionContext(context: vscode.ExtensionContext): void {
@@ -190,7 +209,7 @@ export class ConfigManager {
      */
     private storageJsonExists(): boolean {
         try {
-            const nodeRequire = (globalThis as any).require || eval('require');
+            const nodeRequire = this.getNodeRequire();
             const os = nodeRequire('os');
             const path = nodeRequire('path');
             const fs = nodeRequire('fs');
@@ -224,7 +243,7 @@ export class ConfigManager {
      */
     private detectProfileFromStorageJson(): string | null {
         try {
-            const nodeRequire = (globalThis as any).require || eval('require');
+            const nodeRequire = this.getNodeRequire();
             const os = nodeRequire('os');
             const path = nodeRequire('path');
             const fs = nodeRequire('fs');
@@ -339,7 +358,7 @@ export class ConfigManager {
      */
     private detectProfileFromEnvironment(): string | null {
         try {
-            const nodeRequire = (globalThis as any).require || eval('require');
+            const nodeRequire = this.getNodeRequire();
             const process = nodeRequire('process');
             const os = nodeRequire('os');
             const path = nodeRequire('path');
@@ -497,7 +516,7 @@ export class ConfigManager {
      * Get the base User path for the current platform
      */
     private getBaseUserPath(): string {
-        const nodeRequire = (globalThis as any).require || eval('require');
+        const nodeRequire = this.getNodeRequire();
         const os = nodeRequire('os');
         const path = nodeRequire('path');
         const process = nodeRequire('process');
@@ -522,7 +541,7 @@ export class ConfigManager {
 
         // Use dynamic import approach that works in Node.js environment
         try {
-            const nodeRequire = (globalThis as any).require || eval('require');
+            const nodeRequire = this.getNodeRequire();
             const os = nodeRequire('os');
             const path = nodeRequire('path');
             const process = nodeRequire('process');
