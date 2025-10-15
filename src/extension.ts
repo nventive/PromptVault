@@ -27,8 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
         // Ignore if inspector isn't available
     }
 
-    const configManager = new ConfigManager();
-    configManager.setExtensionContext(context);
+    const configManager = new ConfigManager(context);
     statusBarManager = new StatusBarManager();
     syncManager = new SyncManager(configManager, statusBarManager);
 

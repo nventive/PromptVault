@@ -23,12 +23,9 @@ export class ConfigManager {
         manual: -1 // Never automatic
     };
 
-    private extensionContext?: vscode.ExtensionContext;
+    private readonly extensionContext: vscode.ExtensionContext;
 
-    /**
-     * Set the extension context to enable profile-aware paths
-     */
-    setExtensionContext(context: vscode.ExtensionContext): void {
+    constructor(context: vscode.ExtensionContext) {
         this.extensionContext = context;
     }
 
@@ -102,25 +99,14 @@ export class ConfigManager {
             return this.customPath;
         }
 
-        // Use profile-aware path if extension context is available
-        if (this.extensionContext) {
-            console.log('[Promptitude] Extension context available, using profile-aware path');
-            return this.getProfileAwarePromptsDirectory();
-        }
-
-        // Fallback to hardcoded paths for backward compatibility
-        console.log('[Promptitude] No extension context available, using fallback path');
-        return this.getFallbackPromptsDirectory();
+        console.log('[Promptitude] Using profile-aware path detection');
+        return this.getProfileAwarePromptsDirectory();
     }
 
     /**
      * Get profile-aware prompts directory using multiple detection methods
      */
     private getProfileAwarePromptsDirectory(): string {
-        if (!this.extensionContext) {
-            throw new Error('Extension context not available');
-        }
-
         console.log('[Promptitude] Attempting profile-aware path detection...');
 
         // Method 1: Detect profile from storage.json, process args, or file system (MOST RELIABLE)
@@ -133,7 +119,7 @@ export class ConfigManager {
             return path.join(detectedProfilePath, 'prompts');
         }
 
-        console.log('[Promptitude] No profile detected, checking Extension API paths...');
+    console.log('[Promptitude] No profile detected, checking Extension API paths...');
 
         // Method 2: Try storageUri (workspace-specific, might be profile-aware in some VS Code versions)
         const storageUri = this.extensionContext.storageUri;
