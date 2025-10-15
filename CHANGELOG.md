@@ -7,20 +7,6 @@ All notable changes to the "promptitude" extension will be documented in this fi
 ### Fixed
 
 - **VS Code Profile Support**: Fixed issue where extension didn't work properly with multiple VS Code profiles
-  - **Primary Method**: Reads VS Code's `storage.json` file to detect the active profile (most reliable)
-  - Parses `lastKnownMenubarData.menus.Preferences.items` to find checked profile
-  - Extracts profile ID and constructs correct profile-specific path
-  - **Fallback Methods**: Process arguments scanning and file system detection
-  - Comprehensive logging shows all detection attempts and results
-  - Maintains backward compatibility with default profile support
-  - Works around VS Code Extension API limitation where `storageUri` and `globalStorageUri` are not profile-aware
-
-### Changed
-
-- Enhanced logging with detailed profile detection information showing each detection step
-- Added storage.json parsing as primary profile detection method
-- Added multiple fallback detection methods for robustness
-- Verifies profile directory existence before using detected path
 
 ## [1.4.0] - 2025-10-03
 
