@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { GitProviderFactory } from './utils/gitProviderFactory';
 import { GitProvider } from './utils/gitProvider';
+import { Logger } from './utils/logger';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -24,6 +25,7 @@ export class ConfigManager {
     };
 
     private readonly extensionContext: vscode.ExtensionContext;
+    private readonly logger: Logger = Logger.get('ConfigManager');
 
     constructor(context: vscode.ExtensionContext) {
         this.extensionContext = context;
@@ -95,11 +97,11 @@ export class ConfigManager {
 
     getPromptsDirectory(): string {
         if (this.customPath) {
-            console.log(`[Promptitude] Using custom prompts path: ${this.customPath}`);
+            this.logger.info(`Using custom prompts path: ${this.customPath}`);
             return this.customPath;
         }
 
-        console.log('[Promptitude] Using profile-aware path detection');
+        this.logger.info('Using profile-aware path detection');
         return this.getProfileAwarePromptsDirectory();
     }
 
@@ -107,30 +109,30 @@ export class ConfigManager {
      * Get profile-aware prompts directory using multiple detection methods
      */
     private getProfileAwarePromptsDirectory(): string {
-        console.log('[Promptitude] Attempting profile-aware path detection...');
+        this.logger.info('Attempting profile-aware path detection...');
 
         // Method 1: Detect profile from storage.json, process args, or file system (MOST RELIABLE)
         // This method includes storage.json parsing as primary, with fallbacks
         const detectedProfilePath = this.detectProfileFromEnvironment();
         if (detectedProfilePath) {
             if (this.debug) {
-                console.log(`[Promptitude] ✅ Profile-specific path detected: ${detectedProfilePath}`);
+                this.logger.debug(`✅ Profile-specific path detected: ${detectedProfilePath}`);
             }
             return path.join(detectedProfilePath, 'prompts');
         }
 
-    console.log('[Promptitude] No profile detected, checking Extension API paths...');
+    this.logger.info('No profile detected, checking Extension API paths...');
 
         // Method 2: Try storageUri (workspace-specific, might be profile-aware in some VS Code versions)
         const storageUri = this.extensionContext.storageUri;
         if (storageUri) {
             if (this.debug) {
-                console.log(`[Promptitude] Checking storageUri: ${storageUri.fsPath}`);
+                this.logger.debug(`Checking storageUri: ${storageUri.fsPath}`);
             }
             const profilePath = this.extractUserDirectoryFromStoragePath(storageUri.fsPath, 'workspaceStorage');
             if (profilePath && this.hasProfileInPath(profilePath)) {
                 if (this.debug) {
-                    console.log(`[Promptitude] ✅ Profile detected via storageUri: ${profilePath}`);
+                    this.logger.debug(`✅ Profile detected via storageUri: ${profilePath}`);
                 }
                 return path.join(profilePath, 'prompts');
             }
@@ -139,19 +141,19 @@ export class ConfigManager {
         // Method 3: Use globalStorageUri as ultimate fallback (always works, but not profile-aware)
         const globalStorageUri = this.extensionContext.globalStorageUri;
         if (this.debug) {
-            console.log(`[Promptitude] Using globalStorageUri fallback: ${globalStorageUri.fsPath}`);
+            this.logger.debug(`Using globalStorageUri fallback: ${globalStorageUri.fsPath}`);
         }
 
         const globalProfilePath = this.extractUserDirectoryFromStoragePath(globalStorageUri.fsPath, 'globalStorage');
         if (globalProfilePath) {
             if (this.debug) {
-                console.log(`[Promptitude] Using default User directory: ${globalProfilePath}`);
+                this.logger.debug(`Using default User directory: ${globalProfilePath}`);
             }
             return path.join(globalProfilePath, 'prompts');
         }
 
         // Final fallback to hardcoded paths (should rarely be needed)
-        console.log('[Promptitude] ⚠️ All detection methods failed, using hardcoded fallback paths');
+        this.logger.warn('⚠️ All detection methods failed, using hardcoded fallback paths');
         return this.getFallbackPromptsDirectory();
     }
 
@@ -163,13 +165,13 @@ export class ConfigManager {
         const userIndex = pathSegments.findIndex((segment: string) => segment === 'User');
 
         if (userIndex === -1) {
-            console.log(`[Promptitude] Could not find 'User' directory in ${storageType} path: ${pathSegments.join(', ')}`);
+            this.logger.debug(`Could not find 'User' directory in ${storageType} path: ${pathSegments.join(', ')}`);
             return null;
         }
 
         const storageIndex = pathSegments.findIndex((segment: string) => segment === storageType);
         if (storageIndex === -1) {
-            console.log(`[Promptitude] Could not find '${storageType}' directory in path: ${pathSegments.join(', ')}`);
+            this.logger.debug(`Could not find '${storageType}' directory in path: ${pathSegments.join(', ')}`);
             return null;
         }
 
@@ -231,17 +233,17 @@ export class ConfigManager {
                     storageJsonPath = path.join(os.homedir(), '.config', 'Code', 'User', 'globalStorage', 'storage.json');
                     break;
                 default:
-                    console.log(`[Promptitude] Unsupported platform for storage.json detection: ${process.platform}`);
+                    this.logger.debug(`Unsupported platform for storage.json detection: ${process.platform}`);
                     return null;
             }
 
             if (this.debug) {
-                console.log(`[Promptitude] Checking storage.json at: ${storageJsonPath}`);
+                this.logger.debug(`Checking storage.json at: ${storageJsonPath}`);
             }
 
             if (!fs.existsSync(storageJsonPath)) {
                 if (this.debug) {
-                    console.log(`[Promptitude] storage.json not found at: ${storageJsonPath}`);
+                    this.logger.debug(`storage.json not found at: ${storageJsonPath}`);
                 }
                 return null;
             }
@@ -250,27 +252,27 @@ export class ConfigManager {
             const storageContent = fs.readFileSync(storageJsonPath, 'utf8');
             const storage = JSON.parse(storageContent);
 
-            console.log(`[Promptitude] Successfully parsed storage.json`);
+            this.logger.debug('Successfully parsed storage.json');
 
             // Navigate to lastKnownMenubarData.menus.Preferences.items
             if (!storage.lastKnownMenubarData?.menus?.Preferences?.items) {
-                console.log(`[Promptitude] Could not find lastKnownMenubarData.menus.Preferences.items in storage.json`);
+                this.logger.debug('Could not find lastKnownMenubarData.menus.Preferences.items in storage.json');
                 return null;
             }
 
             const preferencesItems = storage.lastKnownMenubarData.menus.Preferences.items;
-            console.log(`[Promptitude] Found ${preferencesItems.length} items in Preferences menu`);
+            this.logger.debug(`Found ${preferencesItems.length} items in Preferences menu`);
 
             // Find the Profiles submenu item
             const profilesMenuItem = preferencesItems.find((item: any) => item.id === 'submenuitem.Profiles');
 
             if (!profilesMenuItem) {
-                console.log(`[Promptitude] Could not find 'submenuitem.Profiles' in Preferences items`);
-                console.log(`[Promptitude] Available menu items: ${preferencesItems.map((i: any) => i.id).join(', ')}`);
+                this.logger.debug('Could not find \'submenuitem.Profiles\' in Preferences items');
+                this.logger.debug(`Available menu items: ${preferencesItems.map((i: any) => i.id).join(', ')}`);
                 return null;
             }
 
-            console.log(`[Promptitude] Found Profiles submenu, checking for active profile...`);
+            this.logger.debug('Found Profiles submenu, checking for active profile...');
 
             // Find the checked profile in the submenu
             const submenuItems = profilesMenuItem.submenu?.items || [];
@@ -279,7 +281,7 @@ export class ConfigManager {
             );
 
             if (!activeProfile) {
-                console.log(`[Promptitude] No active profile found (using default profile)`);
+                this.logger.debug('No active profile found (using default profile)');
                 return null; // Default profile is active
             }
 
@@ -288,13 +290,13 @@ export class ConfigManager {
             const profileId = activeProfile.id.replace('workbench.profiles.actions.profileEntry.', '');
 
             if (this.debug) {
-                console.log(`[Promptitude] Active profile ID: ${profileId}`);
-                console.log(`[Promptitude] Active profile label: ${activeProfile.label}`);
+                this.logger.debug(`Active profile ID: ${profileId}`);
+                this.logger.debug(`Active profile label: ${activeProfile.label}`);
             }
 
             // Check for default profile
             if (profileId === '__default__profile__') {
-                console.log(`[Promptitude] Default profile is active, no profile-specific path needed`);
+                this.logger.debug('Default profile is active, no profile-specific path needed');
                 return null;
             }
 
@@ -305,20 +307,20 @@ export class ConfigManager {
             // Verify the profile directory exists
             if (fs.existsSync(profilePath)) {
                 if (this.debug) {
-                    console.log(`[Promptitude] ✅ Verified profile directory exists: ${profilePath}`);
+                    this.logger.debug(`✅ Verified profile directory exists: ${profilePath}`);
                 }
                 return profilePath;
             } else {
                 if (this.debug) {
-                    console.log(`[Promptitude] ⚠️ Profile directory does not exist: ${profilePath}`);
-                    console.log(`[Promptitude] Profile may use a different naming convention`);
+                    this.logger.debug(`⚠️ Profile directory does not exist: ${profilePath}`);
+                    this.logger.debug('Profile may use a different naming convention');
                 }
 
                 // Try with the label instead of ID as fallback
                 const profilePathByLabel = path.join(baseUserPath, 'profiles', activeProfile.label);
                 if (fs.existsSync(profilePathByLabel)) {
                     if (this.debug) {
-                        console.log(`[Promptitude] ✅ Found profile by label: ${profilePathByLabel}`);
+                        this.logger.debug(`✅ Found profile by label: ${profilePathByLabel}`);
                     }
                     return profilePathByLabel;
                 }
@@ -326,9 +328,9 @@ export class ConfigManager {
                 return null;
             }
         } catch (error) {
-            console.log(`[Promptitude] Error reading storage.json: ${error}`);
+            this.logger.error(`Error reading storage.json: ${error}`);
             if (this.debug && error instanceof Error && error.stack) {
-                console.log(`[Promptitude] Error stack: ${error.stack}`);
+                this.logger.debug(`Error stack: ${error.stack}`);
             }
             return null;
         }
@@ -339,8 +341,8 @@ export class ConfigManager {
      */
     private detectProfileFromEnvironment(): string | null {
         try {
-            console.log(`[Promptitude] Attempting profile detection from VS Code storage...`);
-            console.log(`[Promptitude] Process platform: ${process.platform}`);
+            this.logger.debug('Attempting profile detection from VS Code storage...');
+            this.logger.debug(`Process platform: ${process.platform}`);
 
             // Method 1: Read storage.json to find active profile (MOST RELIABLE)
             const storageJsonResult = this.detectProfileFromStorageJson();
@@ -352,35 +354,35 @@ export class ConfigManager {
                 // storage.json exists and was parsed successfully
                 if (storageJsonResult) {
                     // Named profile is active
-                    console.log(`[Promptitude] ✅ Named profile detected from storage.json: ${storageJsonResult}`);
+                    this.logger.info(`✅ Named profile detected from storage.json: ${storageJsonResult}`);
                     return storageJsonResult;
                 } else {
                     // Default profile is active (null is intentional)
-                    console.log(`[Promptitude] ✅ Default profile is active (from storage.json)`);
+                    this.logger.info('✅ Default profile is active (from storage.json)');
                     return null; // This will use the default User/prompts path
                 }
             } else {
                 // storage.json doesn't exist or failed to parse, try fallback methods
-                console.log(`[Promptitude] storage.json not available, trying alternative methods...`);
+                this.logger.debug('storage.json not available, trying alternative methods...');
             }
 
             // Log all process arguments for debugging (Method 2) - only in debug mode to avoid leaking sensitive paths
             if (this.debug) {
                 if (process.argv && process.argv.length > 0) {
-                    console.log(`[Promptitude] Full process.argv (${process.argv.length} args):`);
+                    this.logger.debug(`Full process.argv (${process.argv.length} args):`);
                     process.argv.forEach((arg: string, index: number) => {
-                        console.log(`[Promptitude]   [${index}]: ${arg}`);
+                        this.logger.debug(`  [${index}]: ${arg}`);
                     });
                 } else {
-                    console.log(`[Promptitude] process.argv is not available or empty`);
+                    this.logger.debug('process.argv is not available or empty');
                 }
 
                 // Check environment variables - only in debug mode to avoid leaking sensitive data
-                console.log(`[Promptitude] Checking environment variables...`);
+                this.logger.debug('Checking environment variables...');
                 const relevantEnvVars = ['VSCODE_PROFILES', 'VSCODE_PROFILE', 'VSCODE_USER_DATA_DIR', 'VSCODE_CWD'];
                 relevantEnvVars.forEach(envVar => {
                     if (process.env[envVar]) {
-                        console.log(`[Promptitude] ${envVar}: ${process.env[envVar]}`);
+                        this.logger.debug(`${envVar}: ${process.env[envVar]}`);
                     }
                 });
             }
@@ -397,7 +399,7 @@ export class ConfigManager {
                     }
 
                     if (userDataDir) {
-                        console.log(`[Promptitude] Found user-data-dir argument: ${userDataDir}`);
+                        this.logger.debug(`Found user-data-dir argument: ${userDataDir}`);
                         return path.join(userDataDir, 'User');
                     }
                 }
@@ -413,7 +415,7 @@ export class ConfigManager {
                     }
 
                     if (profileName) {
-                        console.log(`[Promptitude] Found profile argument: ${profileName}`);
+                        this.logger.debug(`Found profile argument: ${profileName}`);
                         const baseUserPath = this.getBaseUserPath();
                         return path.join(baseUserPath, 'profiles', profileName);
                     }
@@ -421,13 +423,13 @@ export class ConfigManager {
             }
 
             // Method 3: Check for profile by scanning the profiles directory
-            console.log(`[Promptitude] Attempting file system detection...`);
+            this.logger.debug('Attempting file system detection...');
             const baseUserPath = this.getBaseUserPath();
             const profilesDir = path.join(baseUserPath, 'profiles');
 
             if (fs.existsSync(profilesDir)) {
                 if (this.debug) {
-                    console.log(`[Promptitude] Profiles directory exists: ${profilesDir}`);
+                    this.logger.debug(`Profiles directory exists: ${profilesDir}`);
                 }
                 const profiles = fs.readdirSync(profilesDir).filter((item: string) => {
                     const fullPath = path.join(profilesDir, item);
@@ -438,18 +440,18 @@ export class ConfigManager {
                     }
                 });
 
-                console.log(`[Promptitude] Found ${profiles.length} profile(s)${this.debug ? ': ' + profiles.join(', ') : ''}`);
+                this.logger.debug(`Found ${profiles.length} profile(s)${this.debug ? ': ' + profiles.join(', ') : ''}`);
 
                 // If there's only one profile, use it (heuristic)
                 if (profiles.length === 1) {
                     const detectedProfile = path.join(baseUserPath, 'profiles', profiles[0]);
-                    console.log(`[Promptitude] Single profile detected (heuristic)${this.debug ? ': ' + detectedProfile : ''}`);
+                    this.logger.debug(`Single profile detected (heuristic)${this.debug ? ': ' + detectedProfile : ''}`);
                     return detectedProfile;
                 }
 
                 // Try to detect which profile is currently active by checking recent modifications
                 if (profiles.length > 1) {
-                    console.log(`[Promptitude] Multiple profiles found, checking for most recently active...`);
+                    this.logger.debug('Multiple profiles found, checking for most recently active...');
 
                     let mostRecentProfile = null;
                     let mostRecentTime = 0;
@@ -460,7 +462,7 @@ export class ConfigManager {
                             if (fs.existsSync(settingsPath)) {
                                 const stats = fs.statSync(settingsPath);
                                 if (this.debug) {
-                                    console.log(`[Promptitude] Profile '${profile}' settings modified: ${new Date(stats.mtimeMs).toISOString()}`);
+                                    this.logger.debug(`Profile '${profile}' settings modified: ${new Date(stats.mtimeMs).toISOString()}`);
                                 }
                                 if (stats.mtimeMs > mostRecentTime) {
                                     mostRecentTime = stats.mtimeMs;
@@ -469,28 +471,28 @@ export class ConfigManager {
                             }
                         } catch (err) {
                             if (this.debug) {
-                                console.log(`[Promptitude] Error checking profile '${profile}': ${err}`);
+                                this.logger.debug(`Error checking profile '${profile}': ${err}`);
                             }
                         }
                     });
 
                     if (mostRecentProfile) {
                         const detectedProfile = path.join(baseUserPath, 'profiles', mostRecentProfile);
-                        console.log(`[Promptitude] Most recently active profile detected: ${mostRecentProfile}${this.debug ? ' at ' + detectedProfile : ''}`);
+                        this.logger.debug(`Most recently active profile detected: ${mostRecentProfile}${this.debug ? ' at ' + detectedProfile : ''}`);
                         return detectedProfile;
                     }
                 }
             } else {
                 if (this.debug) {
-                    console.log(`[Promptitude] No profiles directory found at: ${profilesDir}`);
+                    this.logger.debug(`No profiles directory found at: ${profilesDir}`);
                 }
             }
 
-            console.log(`[Promptitude] No profile detected from environment or file system`);
+            this.logger.debug('No profile detected from environment or file system');
         } catch (error) {
-            console.log(`[Promptitude] Error during profile detection: ${error}`);
+            this.logger.error(`Error during profile detection: ${error}`);
             if (error instanceof Error && error.stack) {
-                console.log(`[Promptitude] Error stack: ${error.stack}`);
+                this.logger.debug(`Error stack: ${error.stack}`);
             }
         }
 
@@ -517,7 +519,7 @@ export class ConfigManager {
      * Fallback to hardcoded paths (for backward compatibility when context is not available)
      */
     private getFallbackPromptsDirectory(): string {
-        console.log('[Promptitude] Using fallback hardcoded prompts directory paths');
+        this.logger.warn('Using fallback hardcoded prompts directory paths');
 
         try {
             let promptsPath: string;
@@ -537,7 +539,7 @@ export class ConfigManager {
             }
 
             if (this.debug) {
-                console.log(`[Promptitude] Fallback prompts directory: ${promptsPath}`);
+                this.logger.debug(`Fallback prompts directory: ${promptsPath}`);
             }
             return promptsPath;
         } catch (error) {
