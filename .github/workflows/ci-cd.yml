@@ -1,6 +1,12 @@
 name: CI/CD Pipeline
 
 on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why are you running this?
+        required: false
+        default: Manual trigger
   push:
     branches:
       - main
@@ -49,6 +55,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: vscode-extension
+          path: .
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -58,7 +65,7 @@ jobs:
       - name: Deploy to Marketplace
         run: |
           echo "Deploying to the marketplace..."
-          # Publish pre-built VSIX using the maintained @vscode/vsce package
+          # Publish pre-built VSIX using the @vscode/vsce package
           FILE=$(ls -1 *.vsix | head -n 1)
           echo "Publishing $FILE"
           if [ -z "${VSCE_PAT}" ]; then
