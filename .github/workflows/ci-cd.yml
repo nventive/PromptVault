@@ -1,6 +1,12 @@
 name: CI/CD Pipeline
 
 on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: Why are you running this?
+        required: false
+        default: Manual trigger
   push:
     branches:
       - main
