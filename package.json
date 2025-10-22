@@ -2,7 +2,7 @@
   "name": "promptitude-extension",
   "displayName": "Promptitude",
   "description": "Sync GitHub Copilot prompts, chatmodes and instructions from git repositories",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "publisher": "logientnventive",
   "repository": {
     "type": "git",

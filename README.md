@@ -78,6 +78,8 @@ The extension automatically detects the correct prompts directory for your opera
 
 You can override this by setting a custom path in `promptitude.customPath`.
 
+The extension will adapt this path automatically to function with non-default VS Code profiles.
+
 ### Multiple Repository Configuration
 
 The extension supports syncing from multiple Git repositories simultaneously. This is useful for organizations that maintain prompt collections across multiple repositories or for users who want to combine prompts from different sources.
@@ -118,14 +120,6 @@ When syncing multiple repositories:
 
 Once configured, the extension works automatically based on your sync frequency setting. You'll see notifications (if enabled) when sync operations complete.
 
-### Manual Sync
-
-You can manually trigger a sync at any time:
-
-1. Open the command palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
-2. Type "Promptitude: Sync Now"
-3. Press Enter
-
 ### Status Bar
 
 The extension adds a status bar item showing:
@@ -134,25 +128,16 @@ The extension adds a status bar item showing:
 - Last sync time
 - Click to manually trigger sync
 
-### View Sync Status
-
-Check detailed sync information:
-
-1. Open the command palette
-2. Type "Promptitude: Show Status"
-3. View sync history, errors, and configuration details
-
 ## 📁 Synced Content
 
 The extension syncs all prompt files from the repository subdirectories into a flattened structure:
 
 ```
-prompts/chatmode/*.md       → User/prompts/
-prompts/instructions/*.md   → User/prompts/
-prompts/prompt/*.md         → User/prompts/
+chatmodes/*.md       → User/prompts/
+instructions/*.md   → User/prompts/
+prompts/*.md         → User/prompts/
 ```
 
-All files are placed directly in the `User/prompts/` directory, removing any subfolder structure for easier access and organization.
 
 ## 🔧 Troubleshooting
 
@@ -170,9 +155,9 @@ Access these commands through the VS Code Command Palette (`Ctrl+Shift+P` or `Cm
 
 | Command | Description |
 |---------|-------------|
-| **Promptitude: Setup Azure DevOps Authentication** | Configure authentication for Azure DevOps repositories (first-time setup) |
-| **Promptitude: Update Azure DevOps Personal Access Token** | Update or replace an existing Azure DevOps PAT (useful when tokens expire) |
-| **Promptitude: Clear Azure DevOps Authentication** | Remove stored Azure DevOps authentication (useful for switching accounts or troubleshooting) |
+| **Promptitude: Add Azure DevOps Personal Access Token** | Add or update a Personal Access Token (PAT) used to access Azure DevOps repositories |
+| **Promptitude: Remove Azure DevOps Personal Access Token(s)** | Remove one or all stored PATs |
+| **Promptitude: Clear Azure DevOps Authentication Cache** | Clear cached organization authentication; forces re-authentication on next sync |
 
 
 
@@ -201,7 +186,7 @@ Access these commands through the VS Code Command Palette (`Ctrl+Shift+P` or `Cm
    - Modern: `https://dev.azure.com/org/project/_git/repo`
    - Legacy: `https://org.visualstudio.com/project/_git/repo`
 3. Check that the PAT hasn't expired
-4. Use the "Setup Azure DevOps" button in authentication prompts to re-enter your PAT
+4. Use the "Promptitude: Add Azure DevOps Personal Access Token" command to re-enter your PAT
 
 #### Prompts Directory Not Found
 

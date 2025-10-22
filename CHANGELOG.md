@@ -7,6 +7,7 @@ All notable changes to the "promptitude" extension will be documented in this fi
 ### Fixed
 
 - **VS Code Profile Support**: Fixed issue where extension didn't work properly with multiple VS Code profiles
+- **Chatmodes support**: Chatmodes will now sync correctly.
 
 ## [1.4.0] - 2025-10-03
 
