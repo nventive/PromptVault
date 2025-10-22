@@ -4,6 +4,23 @@ All notable changes to the "promptitude" extension will be documented in this fi
 
 ## vNext
 
+## [1.5.1] - 2025-10-21
+
+### Changed
+
+- Dev tooling: Bumped TypeScript to 5.9.3 and @types/node to 20.19.23.
+- Pinned @types/vscode to ~1.70.0 to align with `engines.vscode: ^1.70.0` and avoid compiling against newer VS Code API types than we officially support.
+
+### Security
+
+- Resolved high-severity advisory on tar-fs via `npm audit fix` (transitive through @vscode/vsce -> keytar -> prebuild-install).
+
+### Notes
+
+- No runtime or user-facing behavior changes; development-only updates. No backward-incompatible changes in this release.
+
+## [1.5.0] - 2025-10-21
+
 ### Fixed
 
 - **VS Code Profile Support**: Fixed issue where extension didn't work properly with multiple VS Code profiles
