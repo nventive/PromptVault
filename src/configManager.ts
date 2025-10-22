@@ -5,7 +5,6 @@ import { Logger } from './utils/logger';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as process from 'process';
 
 export interface SyncFrequency {
     startup: number;
