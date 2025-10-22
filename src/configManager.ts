@@ -176,7 +176,7 @@ export class ConfigManager {
 
         // Take all segments up to (but not including) the storage directory
         const userDirectorySegments = pathSegments.slice(0, storageIndex);
-        return userDirectorySegments.join('/');
+        return path.join(...userDirectorySegments);
     }
 
     /**
