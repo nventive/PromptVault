@@ -4,6 +4,27 @@ All notable changes to the "promptitude" extension will be documented in this fi
 
 ## vNext
 
+## [1.5.1] - 2025-10-21
+
+### Changed
+
+- Dev tooling: Bumped TypeScript to 5.9.3 and @types/node to 20.19.23.
+- Pinned @types/vscode to ~1.70.0 to align with `engines.vscode: ^1.70.0` and avoid compiling against newer VS Code API types than we officially support.
+- Dev tooling: Upgraded ESLint to 9.x and @typescript-eslint (parser/plugin) to 8.x.
+- Migrated from legacy .eslintrc to ESLint v9 flat config (`eslint.config.cjs`).
+- CI: Added ESLint lint step to CI/CD workflow to enforce lint on PRs/builds.
+- CI: Added a TypeScript typecheck step (tsc --noEmit) and made ESLint fail on warnings (--max-warnings=0).
+
+### Security
+
+- Resolved high-severity advisory on tar-fs via `npm audit fix` (transitive through @vscode/vsce -> keytar -> prebuild-install).
+
+### Notes
+
+- No runtime or user-facing behavior changes; development-only updates. No backward-incompatible changes in this release. You may see slightly different lint warnings due to rule engine updates in ESLint 9.
+
+## [1.5.0] - 2025-10-21
+
 ### Fixed
 
 - **VS Code Profile Support**: Fixed issue where extension didn't work properly with multiple VS Code profiles
