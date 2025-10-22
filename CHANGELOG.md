@@ -4,9 +4,9 @@ All notable changes to the "promptitude" extension will be documented in this fi
 
 ## vNext
 
-### Changed
+### Fixed
 
-- Enhanced logging and removed console.logs
+- **VS Code Profile Support**: Fixed issue where extension didn't work properly with multiple VS Code profiles
 
 ## [1.4.0] - 2025-10-03
 

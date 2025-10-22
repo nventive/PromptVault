@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
         // Ignore if inspector isn't available
     }
 
-    const configManager = new ConfigManager();
+    const configManager = new ConfigManager(context);
     statusBarManager = new StatusBarManager();
     syncManager = new SyncManager(configManager, statusBarManager);
 
@@ -49,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             const azureManager = new AzureDevOpsApiManager(context);
             const success = await azureManager.requestAuthentication();
-            
+
             if (success) {
                 const patCount = await azureManager.getPATCount();
                 vscode.window.showInformationMessage(`✅ Azure DevOps PAT added successfully! (Total: ${patCount})`);
@@ -66,12 +66,12 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             const azureManager = new AzureDevOpsApiManager(context);
             const patCount = await azureManager.getPATCount();
-            
+
             if (patCount === 0) {
                 vscode.window.showInformationMessage('No Azure DevOps PATs configured to clear.');
                 return;
             }
-            
+
             // Show options to remove specific PAT or all
             const items = [];
             for (let i = 0; i < patCount; i++) {
@@ -86,15 +86,15 @@ export function activate(context: vscode.ExtensionContext) {
                 description: `Remove all ${patCount} PAT(s)`,
                 index: -1
             });
-            
+
             const selected = await vscode.window.showQuickPick(items, {
                 placeHolder: `You have ${patCount} PAT(s) configured. Select which to remove:`
             });
-            
+
             if (!selected) {
                 return;
             }
-            
+
             if (selected.index === -1) {
                 // Remove all
                 const confirm = await vscode.window.showWarningMessage(
@@ -102,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
                     'Yes, Remove All',
                     'Cancel'
                 );
-                
+
                 if (confirm === 'Yes, Remove All') {
                     await azureManager.clearAllPATs();
                     vscode.window.showInformationMessage('✅ All Azure DevOps PATs removed successfully.');
@@ -114,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
                     'Yes, Remove',
                     'Cancel'
                 );
-                
+
                 if (confirm === 'Yes, Remove') {
                     await azureManager.removePAT(selected.index);
                     vscode.window.showInformationMessage(`✅ PAT ${selected.index + 1} removed successfully.`);
@@ -130,18 +130,18 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             const azureManager = new AzureDevOpsApiManager(context);
             const cachedOrgs = await azureManager.getCachedOrganizations();
-            
+
             if (cachedOrgs.length === 0) {
                 vscode.window.showInformationMessage('No Azure DevOps cache to clear.');
                 return;
             }
-            
+
             const confirm = await vscode.window.showWarningMessage(
                 `Clear Azure DevOps authentication cache for ${cachedOrgs.length} organization(s)? This will force re-authentication on the next sync.`,
                 'Yes, Clear Cache',
                 'Cancel'
             );
-            
+
             if (confirm === 'Yes, Clear Cache') {
                 await azureManager.clearCache();
                 vscode.window.showInformationMessage(`✅ Azure DevOps cache cleared for ${cachedOrgs.length} organization(s).`);
