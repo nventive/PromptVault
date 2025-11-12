@@ -19,6 +19,12 @@ export class ConfigManager {
         manual: -1 // Never automatic
     };
 
+    private context?: vscode.ExtensionContext;
+
+    constructor(context?: vscode.ExtensionContext) {
+        this.context = context;
+    }
+
     get enabled(): boolean {
         return vscode.workspace.getConfiguration('promptitude').get('enabled', true);
     }
@@ -88,9 +94,18 @@ export class ConfigManager {
             return this.customPath;
         }
 
-        // Get VS Code user data directory
-        const os = require('os');
         const path = require('path');
+
+        // Use profile-specific storage if context is available
+        if (this.context && this.context.globalStorageUri) {
+            // globalStorageUri is profile-specific in VS Code
+            // Example: /Users/username/Library/Application Support/Code/User/globalStorage/extension-id
+            const globalStoragePath = this.context.globalStorageUri.fsPath;
+            return path.join(globalStoragePath, 'prompts');
+        }
+
+        // Fallback to global user data directory (legacy behavior)
+        const os = require('os');
         
         switch (process.platform) {
             case 'win32':
