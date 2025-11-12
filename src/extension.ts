@@ -4,11 +4,19 @@ import { StatusBarManager } from './statusBarManager';
 import { ConfigManager } from './configManager';
 import { Logger } from './utils/logger';
 import { AzureDevOpsApiManager } from './utils/azureDevOps';
+import { PromptTreeDataProvider } from './ui/promptTreeProvider';
+import { PromptDetailsWebviewProvider } from './ui/promptDetailsWebview';
+import { PromptCardsWebviewProvider } from './ui/promptCardsWebview';
+import { PromptCommandManager } from './ui/promptCommands';
 
 
 let syncManager: SyncManager;
 let statusBarManager: StatusBarManager;
 let logger: Logger;
+let promptTreeProvider: PromptTreeDataProvider;
+let promptDetailsProvider: PromptDetailsWebviewProvider;
+let promptCardsProvider: PromptCardsWebviewProvider;
+let promptCommandManager: PromptCommandManager;
 
 export function activate(context: vscode.ExtensionContext) {
     logger = Logger.get('Extension');
@@ -27,13 +35,41 @@ export function activate(context: vscode.ExtensionContext) {
         // Ignore if inspector isn't available
     }
 
-    const configManager = new ConfigManager();
+    const configManager = new ConfigManager(context);
     statusBarManager = new StatusBarManager();
-    syncManager = new SyncManager(configManager, statusBarManager);
+    
+    // Initialize UI components first
+    promptTreeProvider = new PromptTreeDataProvider(configManager);
+    promptDetailsProvider = new PromptDetailsWebviewProvider(context.extensionUri);
+    promptCardsProvider = new PromptCardsWebviewProvider(context.extensionUri, configManager, promptTreeProvider);
 
-    // Register commands
+    // Initialize sync manager with tree provider access
+    syncManager = new SyncManager(configManager, statusBarManager, promptTreeProvider);
+    
+    // Initialize command manager with sync manager for symlink operations
+    promptCommandManager = new PromptCommandManager(promptTreeProvider, promptDetailsProvider, configManager, syncManager);
+
+    // Register cards webview provider
+    vscode.window.registerWebviewViewProvider(
+        PromptCardsWebviewProvider.viewType,
+        promptCardsProvider
+    );
+
+    // Register details webview provider
+    vscode.window.registerWebviewViewProvider(
+        PromptDetailsWebviewProvider.viewType,
+        promptDetailsProvider
+    );
+
+    // Register prompt commands
+    promptCommandManager.registerCommands(context);
+
+    // Register original commands
     const syncNowCommand = vscode.commands.registerCommand('promptitude.syncNow', async () => {
         await syncManager.syncNow();
+        // Refresh prompts after sync
+        promptTreeProvider.refresh();
+        promptCardsProvider.refresh();
     });
 
     const showStatusCommand = vscode.commands.registerCommand('promptitude.showStatus', async () => {
@@ -42,6 +78,39 @@ export function activate(context: vscode.ExtensionContext) {
 
     const openPromptsFolderCommand = vscode.commands.registerCommand('promptitude.openPromptsFolder', async () => {
         await syncManager.openPromptsFolder();
+    });
+
+    const cleanupOrphanedPromptsCommand = vscode.commands.registerCommand('promptitude.cleanupOrphanedPrompts', async () => {
+        try {
+            const result = await vscode.window.showWarningMessage(
+                'This will remove regular files from your prompts directory that have copies in repository storage. Only symlinked prompts (active prompts) will remain. Continue?',
+                { modal: true },
+                'Yes, Clean Up'
+            );
+
+            if (result === 'Yes, Clean Up') {
+                const cleanup = await syncManager.cleanupOrphanedPrompts();
+                
+                if (cleanup.removed > 0) {
+                    vscode.window.showInformationMessage(
+                        `✅ Cleaned up ${cleanup.removed} orphaned prompt file(s). Only active (symlinked) prompts remain.`
+                    );
+                } else {
+                    vscode.window.showInformationMessage('No orphaned prompts found. Your prompts directory is clean!');
+                }
+
+                // Refresh UI
+                promptTreeProvider.refresh();
+                promptCardsProvider.refresh();
+
+                if (cleanup.errors.length > 0) {
+                    logger.warn(`Cleanup completed with ${cleanup.errors.length} errors`);
+                }
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            vscode.window.showErrorMessage(`Failed to cleanup orphaned prompts: ${errorMessage}`);
+        }
     });
 
     // Azure DevOps PAT management commands
@@ -153,16 +222,28 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // Add to subscriptions
-    context.subscriptions.push(syncNowCommand);
-    context.subscriptions.push(showStatusCommand);
-    context.subscriptions.push(openPromptsFolderCommand);
-    context.subscriptions.push(addAzureDevOpsPATCommand);
-    context.subscriptions.push(clearAzureDevOpsPATCommand);
-    context.subscriptions.push(clearAzureDevOpsCacheCommand);
-    context.subscriptions.push(statusBarManager);
+    context.subscriptions.push(
+        syncNowCommand,
+        showStatusCommand,
+        openPromptsFolderCommand,
+        cleanupOrphanedPromptsCommand,
+        addAzureDevOpsPATCommand,
+        clearAzureDevOpsPATCommand,
+        clearAzureDevOpsCacheCommand,
+        statusBarManager
+    );
 
     // Initialize sync manager
     syncManager.initialize(context);
+
+    // Set up listener for configuration changes to refresh prompts
+    const configDisposable = vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('promptitude')) {
+            promptTreeProvider.refresh();
+            promptCardsProvider.refresh();
+        }
+    });
+    context.subscriptions.push(configDisposable);
 
     logger.info('Promptitude Extension activated successfully');
 }
