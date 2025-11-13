@@ -24,6 +24,7 @@ export class ConfigManager {
     };
 
     private context?: vscode.ExtensionContext;
+    private logger = Logger.get('ConfigManager');
 
     constructor(context?: vscode.ExtensionContext) {
         this.context = context;
