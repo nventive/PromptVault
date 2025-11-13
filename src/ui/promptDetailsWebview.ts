@@ -1,0 +1,536 @@
+import * as vscode from 'vscode';
+import { PromptInfo } from './promptTreeProvider';
+import { FileSystemManager } from '../utils/fileSystem';
+import { Logger } from '../utils/logger';
+
+export class PromptDetailsWebviewProvider implements vscode.WebviewViewProvider {
+    public static readonly viewType = 'promptitude.details';
+
+    private _view?: vscode.WebviewView;
+    private _currentPrompt?: PromptInfo;
+    private fileSystem: FileSystemManager;
+    private logger: Logger;
+
+    constructor(private readonly _extensionUri: vscode.Uri) {
+        this.fileSystem = new FileSystemManager();
+        this.logger = Logger.get('PromptDetailsWebviewProvider');
+    }
+
+    public resolveWebviewView(
+        webviewView: vscode.WebviewView,
+        context: vscode.WebviewViewResolveContext,
+        _token: vscode.CancellationToken,
+    ) {
+        this._view = webviewView;
+
+        webviewView.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [this._extensionUri]
+        };
+
+        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+        // Handle messages from the webview
+        webviewView.webview.onDidReceiveMessage(
+            message => {
+                switch (message.type) {
+                    case 'saveContent':
+                        this.savePromptContent(message.content);
+                        break;
+                    case 'editPrompt':
+                        this.editPromptInEditor();
+                        break;
+                    case 'duplicatePrompt':
+                        this.duplicatePrompt();
+                        break;
+                    case 'deletePrompt':
+                        this.deletePrompt();
+                        break;
+                    case 'toggleSelection':
+                        this.toggleSelection();
+                        break;
+                    case 'openSettings':
+                        vscode.commands.executeCommand('workbench.action.openSettings', 'promptitude');
+                        break;
+                    case 'openRepository':
+                        this.openRepository(message.repositoryUrl);
+                        break;
+                }
+            },
+            undefined,
+        );
+    }
+
+    public async showPrompt(prompt: PromptInfo) {
+        this._currentPrompt = prompt;
+        
+        if (!this._view) {
+            this.logger.warn('Webview not initialized');
+            return;
+        }
+
+        try {
+            // Compute the actual file path
+            const actualPath = this.getActualFilePath(prompt);
+            this.logger.debug(`Reading prompt from: ${actualPath}`);
+            
+            const content = await this.fileSystem.readFileContent(actualPath);
+            const metadata = await this.getPromptMetadata(prompt);
+            
+            await this._view.webview.postMessage({
+                type: 'showPrompt',
+                prompt: {
+                    ...prompt,
+                    content,
+                    metadata
+                }
+            });
+
+            this._view.show?.(true);
+        } catch (error) {
+            this.logger.error(`Failed to show prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to load prompt: ${error}`);
+        }
+    }
+
+    /**
+     * Get the actual file path for a prompt (handles inactive prompts stored in repository)
+     */
+    private getActualFilePath(prompt: PromptInfo): string {
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+        
+        this.logger.debug(`Getting actual path - active: ${prompt.active}, repositoryUrl: ${prompt.repositoryUrl}, path: ${prompt.path}`);
+        
+        // First, check if the workspace path exists (for active prompts)
+        if (fs.existsSync(prompt.path)) {
+            this.logger.debug(`File exists at workspace path: ${prompt.path}`);
+            return prompt.path;
+        }
+        
+        // If workspace path doesn't exist and we have a repository URL, try repository storage
+        if (prompt.repositoryUrl) {
+            // Compute prompts directory and user directory
+            const promptsDir = path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
+            const userDir = path.dirname(promptsDir);
+            
+            // Encode repository URL the same way as SyncManager
+            const encodedUrl = prompt.repositoryUrl
+                .replace(/https?:\/\//, '')
+                .replace(/[^\w\-\.]/g, '_')
+                .replace(/_+/g, '_')
+                .toLowerCase();
+            
+            // Store outside prompts directory to prevent Copilot from scanning
+            const repoStoragePath = path.join(userDir, '.promptitude', 'repos', encodedUrl, prompt.name);
+            
+            if (fs.existsSync(repoStoragePath)) {
+                this.logger.debug(`File exists at repository storage: ${repoStoragePath}`);
+                return repoStoragePath;
+            } else {
+                this.logger.warn(`File not found at repository storage: ${repoStoragePath}`);
+            }
+        }
+        
+        // Fallback to the original path (will likely fail, but at least we tried)
+        this.logger.warn(`File not found anywhere, returning original path: ${prompt.path}`);
+        return prompt.path;
+    }
+
+    public clearPrompt() {
+        this._currentPrompt = undefined;
+        this._view?.webview.postMessage({
+            type: 'clearPrompt'
+        });
+    }
+
+    public updateSelectionStatus(prompt: PromptInfo) {
+        if (this._currentPrompt && this._currentPrompt.path === prompt.path) {
+            this._currentPrompt.active = prompt.active;
+            this._view?.webview.postMessage({
+                type: 'updateSelection',
+                active: prompt.active
+            });
+        }
+    }
+
+    private async getPromptMetadata(prompt: PromptInfo) {
+        return {
+            name: prompt.name,
+            type: prompt.type,
+            active: prompt.active,
+            description: prompt.description,
+            repositoryUrl: prompt.repositoryUrl
+        };
+    }
+
+    private async savePromptContent(content: string) {
+        if (!this._currentPrompt) {
+            return;
+        }
+
+        try {
+            const actualPath = this.getActualFilePath(this._currentPrompt);
+            await this.fileSystem.writeFileContent(actualPath, content);
+
+            // Notify webview of successful save
+            this._view?.webview.postMessage({
+                type: 'saveSuccess'
+            });
+
+            vscode.window.showInformationMessage('Prompt saved successfully');
+            
+            // Fire event to refresh tree view
+            vscode.commands.executeCommand('prompts.refresh');
+        } catch (error) {
+            this.logger.error(`Failed to save prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to save prompt: ${error}`);
+            
+            this._view?.webview.postMessage({
+                type: 'saveError',
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    }
+
+    private async editPromptInEditor() {
+        if (!this._currentPrompt) {
+            return;
+        }
+
+        try {
+            const actualPath = this.getActualFilePath(this._currentPrompt);
+            const document = await vscode.workspace.openTextDocument(actualPath);
+            await vscode.window.showTextDocument(document);
+        } catch (error) {
+            this.logger.error(`Failed to open prompt in editor: ${error}`);
+            vscode.window.showErrorMessage(`Failed to open prompt: ${error}`);
+        }
+    }
+
+    private async duplicatePrompt() {
+        if (!this._currentPrompt) {
+            return;
+        }
+
+        try {
+            const path = require('path');
+            const os = require('os');
+            
+            const baseName = this._currentPrompt.name.replace(/\.[^/.]+$/, '');
+            const extension = this._currentPrompt.name.substring(baseName.length);
+            const newName = `${baseName}_copy${extension}`;
+            
+            // Always write to workspace directory for duplicates
+            const promptsDir = path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
+            const newPath = path.join(promptsDir, newName);
+            
+            // Read from actual path (repository storage for inactive prompts)
+            const actualPath = this.getActualFilePath(this._currentPrompt);
+            const content = await this.fileSystem.readFileContent(actualPath);
+            await this.fileSystem.writeFileContent(newPath, content);
+            
+            vscode.window.showInformationMessage(`Prompt duplicated as ${newName}`);
+            vscode.commands.executeCommand('prompts.refresh');
+        } catch (error) {
+            this.logger.error(`Failed to duplicate prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to duplicate prompt: ${error}`);
+        }
+    }
+
+    private async deletePrompt() {
+        if (!this._currentPrompt) {
+            return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+            `Are you sure you want to delete "${this._currentPrompt.name}"?`,
+            { modal: true },
+            'Delete'
+        );
+
+        if (confirm === 'Delete') {
+            try {
+                const actualPath = this.getActualFilePath(this._currentPrompt);
+                await vscode.workspace.fs.delete(vscode.Uri.file(actualPath));
+                vscode.window.showInformationMessage(`Prompt "${this._currentPrompt.name}" deleted successfully`);
+                this.clearPrompt();
+                vscode.commands.executeCommand('prompts.refresh');
+            } catch (error) {
+                this.logger.error(`Failed to delete prompt: ${error}`);
+                vscode.window.showErrorMessage(`Failed to delete prompt: ${error}`);
+            }
+        }
+    }
+
+    private toggleSelection() {
+        if (!this._currentPrompt) {
+            return;
+        }
+
+        vscode.commands.executeCommand('prompts.toggleSelection', this._currentPrompt);
+    }
+
+    private async openRepository(repositoryUrl: string) {
+        try {
+            if (!repositoryUrl) {
+                return;
+            }
+            
+            this.logger.info(`Opening repository in browser: ${repositoryUrl}`);
+            
+            // Open the URL in the default browser
+            await vscode.env.openExternal(vscode.Uri.parse(repositoryUrl));
+        } catch (error) {
+            this.logger.error('Failed to open repository:', error as Error);
+            vscode.window.showErrorMessage(`Failed to open repository: ${error}`);
+        }
+    }
+
+    private _getHtmlForWebview(webview: vscode.Webview) {
+        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+        const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
+
+        const nonce = getNonce();
+
+        return `<!DOCTYPE html>
+			<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+				<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<link href="${styleResetUri}" rel="stylesheet">
+				<link href="${styleVSCodeUri}" rel="stylesheet">
+				<link href="${styleMainUri}" rel="stylesheet">
+				<title>Prompt Details</title>
+			</head>
+			<body>
+				<div id="container">
+					<div id="empty-state" class="empty-state">
+						<div class="empty-icon">📝</div>
+						<h2>No Prompt Selected</h2>
+						<p>Select a prompt from the tree view to view its details and content.</p>
+					</div>
+					
+					<div id="prompt-details" class="prompt-details" style="display: none;">
+						<div class="header">
+							<div class="title-section">
+								<h1 id="prompt-title"></h1>
+								<div class="metadata">
+									<span id="prompt-type" class="type-badge"></span>
+								</div>
+							</div>
+							<div class="actions">
+								<button id="toggle-selection" class="action-button" title="Toggle Active">
+									<span class="icon">✓</span>
+								</button>
+							</div>
+						</div>
+						
+							<div class="description-section" id="description-section" style="display: none;">
+								<div class="description-content" id="prompt-description"></div>
+							</div>
+
+							<div class="content-section">
+								<div class="section-header">
+									<h3>Content</h3>
+									<div class="content-actions">
+										<button id="save-content" class="action-button primary" style="display: none;">
+											<span class="icon">💾</span>
+											Save
+										</button>
+										<button id="reset-content" class="action-button" style="display: none;">
+											<span class="icon">↩️</span>
+											Reset
+										</button>
+									</div>
+								</div>
+								<textarea id="prompt-content" class="content-editor" placeholder="Prompt content will appear here..."></textarea>
+							</div>
+
+							<div class="info-section" id="source-section" style="display: none;">
+								<div class="info-item">
+									<label>Source:</label>
+									<span id="prompt-source"></span>
+								</div>
+							</div>
+					</div>
+				</div>
+
+				<script nonce="${nonce}">
+					const vscode = acquireVsCodeApi();
+					let currentPrompt = null;
+					let originalContent = '';
+					let hasUnsavedChanges = false;
+
+					// DOM elements
+					const emptyState = document.getElementById('empty-state');
+					const promptDetails = document.getElementById('prompt-details');
+					const promptTitle = document.getElementById('prompt-title');
+					const promptType = document.getElementById('prompt-type');
+					const promptContent = document.getElementById('prompt-content');
+					const promptDescription = document.getElementById('prompt-description');
+					const descriptionSection = document.getElementById('description-section');
+					const promptSource = document.getElementById('prompt-source');
+					const sourceSection = document.getElementById('source-section');
+					
+					const toggleSelectionBtn = document.getElementById('toggle-selection');
+					const saveContentBtn = document.getElementById('save-content');
+					const resetContentBtn = document.getElementById('reset-content');
+
+					// Event listeners
+					toggleSelectionBtn.addEventListener('click', () => {
+						vscode.postMessage({ type: 'toggleSelection' });
+					});
+
+					saveContentBtn.addEventListener('click', () => {
+						vscode.postMessage({ 
+							type: 'saveContent',
+							content: promptContent.value
+						});
+						hasUnsavedChanges = false;
+						updateSaveButtons();
+					});
+
+					resetContentBtn.addEventListener('click', () => {
+						promptContent.value = originalContent;
+						hasUnsavedChanges = false;
+						updateSaveButtons();
+					});
+
+					promptContent.addEventListener('input', () => {
+						hasUnsavedChanges = promptContent.value !== originalContent;
+						updateSaveButtons();
+					});
+
+					function updateSaveButtons() {
+						saveContentBtn.style.display = hasUnsavedChanges ? 'inline-flex' : 'none';
+						resetContentBtn.style.display = hasUnsavedChanges ? 'inline-flex' : 'none';
+					}
+
+					function updateSelectionButton(active) {
+						const icon = toggleSelectionBtn.querySelector('.icon');
+						if (active) {
+							icon.textContent = '✓';
+							toggleSelectionBtn.classList.add('selected');
+							toggleSelectionBtn.title = 'Deactivate';
+						} else {
+							icon.textContent = '☐';
+							toggleSelectionBtn.classList.remove('selected');
+							toggleSelectionBtn.title = 'Activate';
+						}
+					}
+
+					function showPrompt(data) {
+						currentPrompt = data.prompt;
+						originalContent = data.prompt.content;
+						
+						emptyState.style.display = 'none';
+						promptDetails.style.display = 'block';
+						
+						// Update header
+						promptTitle.textContent = data.prompt.name;
+						promptType.textContent = data.prompt.type;
+						promptType.className = \`type-badge type-\${data.prompt.type}\`;
+						
+						// Update description if available
+						if (data.prompt.description && data.prompt.description !== 'No description available') {
+							promptDescription.textContent = data.prompt.description;
+							descriptionSection.style.display = 'block';
+						} else {
+							descriptionSection.style.display = 'none';
+						}
+						
+						// Update content
+						promptContent.value = data.prompt.content;
+						
+						// Update source if from repository
+						if (data.prompt.repositoryUrl) {
+							const repoName = extractRepositoryName(data.prompt.repositoryUrl);
+							promptSource.innerHTML = \`<a href="#" class="repo-link" data-url="\${data.prompt.repositoryUrl}" title="Open repository in browser">\${repoName} 🔗</a>\`;
+							
+							// Add click handler for the link
+							const repoLink = promptSource.querySelector('.repo-link');
+							if (repoLink) {
+								repoLink.addEventListener('click', (e) => {
+									e.preventDefault();
+									const url = repoLink.getAttribute('data-url');
+									if (url) {
+										vscode.postMessage({ type: 'openRepository', repositoryUrl: url });
+									}
+								});
+							}
+							
+							sourceSection.style.display = 'block';
+						} else {
+							promptSource.textContent = 'Local';
+							sourceSection.style.display = 'block';
+						}
+						
+						// Update selection button
+						updateSelectionButton(data.prompt.active);
+						
+						// Reset save state
+						hasUnsavedChanges = false;
+						updateSaveButtons();
+					}
+
+					function extractRepositoryName(url) {
+						// GitHub: https://github.com/owner/repo
+						const githubMatch = url.match(/github\\.com\\/([^/]+\\/[^/]+)/);
+						if (githubMatch) return githubMatch[1];
+						
+						// Azure DevOps: https://dev.azure.com/org/project/_git/repo
+						const azureMatch = url.match(/dev\\.azure\\.com\\/[^/]+\\/[^/]+\\/_git\\/([^/]+)/);
+						if (azureMatch) return azureMatch[1];
+						
+						return url;
+					}
+
+					function clearPrompt() {
+						currentPrompt = null;
+						originalContent = '';
+						emptyState.style.display = 'block';
+						promptDetails.style.display = 'none';
+						hasUnsavedChanges = false;
+						updateSaveButtons();
+					}
+
+					// Handle messages from extension
+					window.addEventListener('message', event => {
+						const message = event.data;
+						
+						switch (message.type) {
+							case 'showPrompt':
+								showPrompt(message);
+								break;
+							case 'clearPrompt':
+								clearPrompt();
+								break;
+							case 'updateSelection':
+								updateSelectionButton(message.active);
+								break;
+							case 'saveSuccess':
+								// Just acknowledge the save, no need to update metadata display
+								break;
+							case 'saveError':
+								// Handle save error
+								break;
+						}
+					});
+				</script>
+			</body>
+			</html>`;
+    }
+}
+
+function getNonce() {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
+}

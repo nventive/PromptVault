@@ -6,6 +6,7 @@ const stat = promisify(fs.stat);
 const mkdir = promisify(fs.mkdir);
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
+const readdir = promisify(fs.readdir);
 
 export class FileSystemManager {
     async ensureDirectoryExists(dirPath: string): Promise<void> {
@@ -14,6 +15,23 @@ export class FileSystemManager {
         } catch (error) {
             // Directory doesn't exist, create it
             await mkdir(dirPath, { recursive: true });
+        }
+    }
+
+    async directoryExists(dirPath: string): Promise<boolean> {
+        try {
+            const stats = await stat(dirPath);
+            return stats.isDirectory();
+        } catch {
+            return false;
+        }
+    }
+
+    async readDirectory(dirPath: string): Promise<string[]> {
+        try {
+            return await readdir(dirPath);
+        } catch (error) {
+            throw new Error(`Failed to read directory ${dirPath}: ${error}`);
         }
     }
 

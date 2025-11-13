@@ -1,0 +1,42 @@
+/* VS Code variables and base styles */
+:root {
+	--container-padding: 20px;
+	--border-radius: 4px;
+	--button-padding: 8px 12px;
+	--input-padding: 8px 12px;
+	--spacing-xs: 4px;
+	--spacing-sm: 8px;
+	--spacing-md: 12px;
+	--spacing-lg: 16px;
+	--spacing-xl: 20px;
+	--spacing-xxl: 24px;
+}
+
+body {
+	color: var(--vscode-foreground);
+	background-color: var(--vscode-sidebar-background);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--vscode-scrollbarSlider-background);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--vscode-scrollbarSlider-hoverBackground);
+	border-radius: var(--border-radius);
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--vscode-scrollbarSlider-activeBackground);
+}
+
+/* Focus styles */
+*:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
+}

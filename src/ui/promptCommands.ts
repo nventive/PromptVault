@@ -1,0 +1,378 @@
+import * as vscode from 'vscode';
+import { PromptTreeDataProvider, PromptInfo, PromptTreeItem } from './promptTreeProvider';
+import { PromptDetailsWebviewProvider } from './promptDetailsWebview';
+import { ConfigManager } from '../configManager';
+import { FileSystemManager } from '../utils/fileSystem';
+import { Logger } from '../utils/logger';
+import { SyncManager } from '../syncManager';
+
+export class PromptCommandManager {
+    private logger: Logger;
+    private fileSystem: FileSystemManager;
+
+    constructor(
+        private treeProvider: PromptTreeDataProvider,
+        private webviewProvider: PromptDetailsWebviewProvider,
+        private config: ConfigManager,
+        private syncManager?: SyncManager
+    ) {
+        this.logger = Logger.get('PromptCommandManager');
+        this.fileSystem = new FileSystemManager();
+    }
+
+    registerCommands(context: vscode.ExtensionContext): void {
+        // Tree view commands
+        const refreshCommand = vscode.commands.registerCommand('prompts.refresh', () => {
+            this.refreshPrompts();
+        });
+
+        const toggleSelectionCommand = vscode.commands.registerCommand('prompts.toggleSelection', (item: PromptTreeItem | PromptInfo) => {
+            this.toggleSelection(item);
+        });
+
+        const selectAllCommand = vscode.commands.registerCommand('prompts.selectAll', () => {
+            this.selectAll();
+        });
+
+        const deselectAllCommand = vscode.commands.registerCommand('prompts.deselectAll', () => {
+            this.deselectAll();
+        });
+
+        // Prompt action commands
+        const editPromptCommand = vscode.commands.registerCommand('prompts.editPrompt', (item: PromptTreeItem | PromptInfo) => {
+            this.editPrompt(item);
+        });
+
+        const viewPromptCommand = vscode.commands.registerCommand('prompts.viewPrompt', (item: PromptTreeItem | PromptInfo) => {
+            this.viewPrompt(item);
+        });
+
+        const deletePromptCommand = vscode.commands.registerCommand('prompts.deletePrompt', (item: PromptTreeItem | PromptInfo) => {
+            this.deletePrompt(item);
+        });
+
+        const duplicatePromptCommand = vscode.commands.registerCommand('prompts.duplicatePrompt', (item: PromptTreeItem | PromptInfo) => {
+            this.duplicatePrompt(item);
+        });
+
+        // Settings command
+        const openSettingsCommand = vscode.commands.registerCommand('prompts.openSettings', () => {
+            this.openSettings();
+        });
+
+        // Add all commands to subscriptions
+        context.subscriptions.push(
+            refreshCommand,
+            toggleSelectionCommand,
+            selectAllCommand,
+            deselectAllCommand,
+            editPromptCommand,
+            viewPromptCommand,
+            deletePromptCommand,
+            duplicatePromptCommand,
+            openSettingsCommand
+        );
+
+        this.logger.info('Prompt commands registered successfully');
+    }
+
+    private refreshPrompts(): void {
+        this.logger.debug('Refreshing prompts tree view');
+        this.treeProvider.refresh();
+        vscode.window.showInformationMessage('Prompts refreshed');
+    }
+
+    private async toggleSelection(item: PromptTreeItem | PromptInfo): Promise<void> {
+        try {
+            const promptInfo = this.getPromptInfo(item);
+            if (!promptInfo) {
+                this.logger.warn('Invalid prompt item for toggle selection');
+                vscode.window.showErrorMessage('Invalid prompt item');
+                return;
+            }
+
+            this.logger.info(`Toggling selection for: ${promptInfo.name}, current active: ${promptInfo.active}, repositoryUrl: ${promptInfo.repositoryUrl || 'none'}`);
+
+            // Toggle the selection in the tree provider first
+            this.treeProvider.toggleSelection(promptInfo);
+            this.webviewProvider.updateSelectionStatus(promptInfo);
+            
+            // Handle symlink creation/removal if SyncManager is available
+            if (this.syncManager) {
+                if (promptInfo.active) {
+                    // Prompt was activated - create symlink
+                    const repositoryUrl = promptInfo.repositoryUrl;
+                    if (repositoryUrl) {
+                        this.logger.info(`Activating prompt: ${promptInfo.name} with URL: ${repositoryUrl}`);
+                        await this.syncManager.activatePrompt(promptInfo.name, repositoryUrl);
+                        this.logger.info(`Successfully created symlink for activated prompt: ${promptInfo.name}`);
+                        vscode.window.showInformationMessage(`✅ Activated prompt: ${promptInfo.name}`);
+                    } else {
+                        const errorMsg = `No repository URL found for prompt: ${promptInfo.name}. Cannot create symlink.`;
+                        this.logger.error(errorMsg);
+                        vscode.window.showErrorMessage(errorMsg);
+                        // Revert the toggle since we couldn't create the symlink
+                        this.treeProvider.toggleSelection(promptInfo);
+                    }
+                } else {
+                    // Prompt was deactivated - remove symlink
+                    this.logger.info(`Deactivating prompt: ${promptInfo.name}`);
+                    await this.syncManager.deactivatePrompt(promptInfo.name);
+                    this.logger.info(`Successfully removed symlink for deactivated prompt: ${promptInfo.name}`);
+                    vscode.window.showInformationMessage(`✅ Deactivated prompt: ${promptInfo.name}`);
+                }
+            } else {
+                this.logger.error('SyncManager not available - cannot create/remove symlinks');
+                vscode.window.showErrorMessage('SyncManager not available');
+                // Revert the toggle
+                this.treeProvider.toggleSelection(promptInfo);
+            }
+            
+            const status = promptInfo.active ? 'activated' : 'deactivated';
+            this.logger.info(`Prompt ${promptInfo.name} ${status}`);
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Failed to toggle selection: ${errorMsg}`, error instanceof Error ? error : undefined);
+            vscode.window.showErrorMessage(`Failed to toggle selection: ${errorMsg}`);
+            // Try to revert the toggle
+            try {
+                const promptInfo = this.getPromptInfo(item);
+                if (promptInfo) {
+                    this.treeProvider.toggleSelection(promptInfo);
+                }
+            } catch {
+                // Ignore revert errors
+            }
+        }
+    }
+
+    private selectAll(): void {
+        try {
+            this.treeProvider.selectAll();
+            const count = this.treeProvider.getSelectedPrompts().length;
+            vscode.window.showInformationMessage(`Activated ${count} prompts`);
+            this.logger.debug(`Activated all prompts (${count} total)`);
+        } catch (error) {
+            this.logger.error(`Failed to activate all prompts: ${error}`);
+            vscode.window.showErrorMessage(`Failed to activate all prompts: ${error}`);
+        }
+    }
+
+    private deselectAll(): void {
+        try {
+            this.treeProvider.deselectAll();
+            vscode.window.showInformationMessage('All prompts deactivated');
+            this.logger.debug('Deactivated all prompts');
+        } catch (error) {
+            this.logger.error(`Failed to deactivate all prompts: ${error}`);
+            vscode.window.showErrorMessage(`Failed to deactivate all prompts: ${error}`);
+        }
+    }
+
+    private async editPrompt(item: PromptTreeItem | PromptInfo): Promise<void> {
+        try {
+            const promptInfo = this.getPromptInfo(item);
+            if (!promptInfo) {
+                this.logger.warn('Invalid prompt item for edit');
+                return;
+            }
+
+            const document = await vscode.workspace.openTextDocument(promptInfo.path);
+            await vscode.window.showTextDocument(document);
+            this.logger.debug(`Opened prompt for editing: ${promptInfo.name}`);
+        } catch (error) {
+            this.logger.error(`Failed to edit prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to open prompt for editing: ${error}`);
+        }
+    }
+
+    private async viewPrompt(item: PromptTreeItem | PromptInfo): Promise<void> {
+        try {
+            const promptInfo = this.getPromptInfo(item);
+            if (!promptInfo) {
+                this.logger.warn('Invalid prompt item for view');
+                return;
+            }
+
+            await this.webviewProvider.showPrompt(promptInfo);
+            this.logger.debug(`Viewing prompt in details panel: ${promptInfo.name}`);
+        } catch (error) {
+            this.logger.error(`Failed to view prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to view prompt: ${error}`);
+        }
+    }
+
+    private async deletePrompt(item: PromptTreeItem | PromptInfo): Promise<void> {
+        try {
+            const promptInfo = this.getPromptInfo(item);
+            if (!promptInfo) {
+                this.logger.warn('Invalid prompt item for delete');
+                return;
+            }
+
+            const confirm = await vscode.window.showWarningMessage(
+                `Are you sure you want to delete "${promptInfo.name}"?`,
+                { modal: true },
+                'Delete'
+            );
+
+            if (confirm === 'Delete') {
+                await vscode.workspace.fs.delete(vscode.Uri.file(promptInfo.path));
+                this.treeProvider.refresh();
+                this.webviewProvider.clearPrompt();
+                
+                vscode.window.showInformationMessage(`Prompt "${promptInfo.name}" deleted successfully`);
+                this.logger.debug(`Deleted prompt: ${promptInfo.name}`);
+            }
+        } catch (error) {
+            this.logger.error(`Failed to delete prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to delete prompt: ${error}`);
+        }
+    }
+
+    private async duplicatePrompt(item: PromptTreeItem | PromptInfo): Promise<void> {
+        try {
+            const promptInfo = this.getPromptInfo(item);
+            if (!promptInfo) {
+                this.logger.warn('Invalid prompt item for duplicate');
+                return;
+            }
+
+            // Generate new filename
+            const baseName = promptInfo.name.replace(/\.[^/.]+$/, '');
+            const extension = promptInfo.name.substring(baseName.length);
+            let newName = `${baseName}_copy${extension}`;
+            
+            // Ensure unique filename
+            const promptsDir = this.config.getPromptsDirectory();
+            let counter = 1;
+            while (await this.fileSystem.fileExists(this.fileSystem.joinPath(promptsDir, newName))) {
+                newName = `${baseName}_copy${counter}${extension}`;
+                counter++;
+            }
+
+            const newPath = this.fileSystem.joinPath(promptsDir, newName);
+            
+            // Copy content
+            const content = await this.fileSystem.readFileContent(promptInfo.path);
+            await this.fileSystem.writeFileContent(newPath, content);
+            
+            // Refresh tree view
+            this.treeProvider.refresh();
+            
+            vscode.window.showInformationMessage(`Prompt duplicated as "${newName}"`);
+            this.logger.debug(`Duplicated prompt ${promptInfo.name} as ${newName}`);
+        } catch (error) {
+            this.logger.error(`Failed to duplicate prompt: ${error}`);
+            vscode.window.showErrorMessage(`Failed to duplicate prompt: ${error}`);
+        }
+    }
+
+    private openSettings(): void {
+        try {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'promptitude');
+            this.logger.debug('Opened Promptitude settings');
+        } catch (error) {
+            this.logger.error(`Failed to open settings: ${error}`);
+            vscode.window.showErrorMessage(`Failed to open settings: ${error}`);
+        }
+    }
+
+    private getPromptInfo(item: PromptTreeItem | PromptInfo): PromptInfo | undefined {
+        if ('promptInfo' in item) {
+            return item.promptInfo;
+        }
+        
+        if ('name' in item && 'path' in item && 'type' in item) {
+            return item as PromptInfo;
+        }
+        
+        return undefined;
+    }
+
+    // Bulk operations
+    async deleteSelectedPrompts(): Promise<void> {
+        try {
+            const selectedPrompts = this.treeProvider.getSelectedPrompts();
+            
+            if (selectedPrompts.length === 0) {
+                vscode.window.showInformationMessage('No active prompts to delete');
+                return;
+            }
+
+            const confirm = await vscode.window.showWarningMessage(
+                `Are you sure you want to delete ${selectedPrompts.length} active prompt(s)?`,
+                { modal: true },
+                'Delete All'
+            );
+
+            if (confirm === 'Delete All') {
+                let deletedCount = 0;
+                const errors: string[] = [];
+
+                for (const prompt of selectedPrompts) {
+                    try {
+                        await vscode.workspace.fs.delete(vscode.Uri.file(prompt.path));
+                        deletedCount++;
+                    } catch (error) {
+                        errors.push(`${prompt.name}: ${error}`);
+                    }
+                }
+
+                this.treeProvider.refresh();
+                this.webviewProvider.clearPrompt();
+
+                if (errors.length === 0) {
+                    vscode.window.showInformationMessage(`Successfully deleted ${deletedCount} prompts`);
+                } else {
+                    vscode.window.showWarningMessage(
+                        `Deleted ${deletedCount} prompts, but ${errors.length} failed. Check output for details.`
+                    );
+                    this.logger.warn(`Bulk delete errors: ${errors.join('; ')}`);
+                }
+
+                this.logger.debug(`Bulk deleted ${deletedCount} prompts with ${errors.length} errors`);
+            }
+        } catch (error) {
+            this.logger.error(`Failed to delete selected prompts: ${error}`);
+            vscode.window.showErrorMessage(`Failed to delete selected prompts: ${error}`);
+        }
+    }
+
+    async exportSelectedPrompts(): Promise<void> {
+        try {
+            const selectedPrompts = this.treeProvider.getSelectedPrompts();
+            
+            if (selectedPrompts.length === 0) {
+                vscode.window.showInformationMessage('No active prompts to export');
+                return;
+            }
+
+            const saveUri = await vscode.window.showSaveDialog({
+                defaultUri: vscode.Uri.file(`prompts_export_${new Date().toISOString().split('T')[0]}.zip`),
+                filters: {
+                    'Archive files': ['zip'],
+                    'All files': ['*']
+                }
+            });
+
+            if (saveUri) {
+                // For now, just copy files to a directory
+                // In a full implementation, you'd create a ZIP file
+                vscode.window.showInformationMessage(`Export functionality would save ${selectedPrompts.length} prompts to ${saveUri.fsPath}`);
+                this.logger.debug(`Export request for ${selectedPrompts.length} prompts to ${saveUri.fsPath}`);
+            }
+        } catch (error) {
+            this.logger.error(`Failed to export selected prompts: ${error}`);
+            vscode.window.showErrorMessage(`Failed to export selected prompts: ${error}`);
+        }
+    }
+
+    getSelectedCount(): number {
+        return this.treeProvider.getSelectedPrompts().length;
+    }
+
+    getTotalCount(): number {
+        return this.treeProvider.getAllPrompts().length;
+    }
+}
