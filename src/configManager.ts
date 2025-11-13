@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { GitProviderFactory } from './utils/gitProviderFactory';
 import { GitProvider } from './utils/gitProvider';
+import { Logger } from './utils/logger';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export interface SyncFrequency {
     startup: number;
@@ -91,6 +95,7 @@ export class ConfigManager {
 
     getPromptsDirectory(): string {
         if (this.customPath) {
+            this.logger.info(`Using custom prompts path: ${this.customPath}`);
             return this.customPath;
         }
 
@@ -109,13 +114,47 @@ export class ConfigManager {
         
         switch (process.platform) {
             case 'win32':
-                return path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User', 'prompts');
+                return path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User');
             case 'darwin':
-                return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
+                return path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User');
             case 'linux':
-                return path.join(os.homedir(), '.config', 'Code', 'User', 'prompts');
+                return path.join(os.homedir(), '.config', 'Code', 'User');
             default:
-                return path.join(os.homedir(), '.vscode', 'prompts');
+                return path.join(os.homedir(), '.vscode', 'User');
+        }
+    }
+
+    /**
+     * Fallback to hardcoded paths (for backward compatibility when context is not available)
+     */
+    private getFallbackPromptsDirectory(): string {
+        this.logger.warn('Using fallback hardcoded prompts directory paths');
+
+        try {
+            let promptsPath: string;
+            switch (process.platform) {
+                case 'win32':
+                    promptsPath = path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User', 'prompts');
+                    break;
+                case 'darwin':
+                    promptsPath = path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
+                    break;
+                case 'linux':
+                    promptsPath = path.join(os.homedir(), '.config', 'Code', 'User', 'prompts');
+                    break;
+                default:
+                    promptsPath = path.join(os.homedir(), '.vscode', 'prompts');
+                    break;
+            }
+
+            if (this.debug) {
+                this.logger.debug(`Fallback prompts directory: ${promptsPath}`);
+            }
+            return promptsPath;
+        } catch (error) {
+            // If Node.js modules are not available, use a reasonable default
+            // This should not happen in a VS Code extension context, but provides safety
+            throw new Error('Unable to determine prompts directory: Node.js environment not available');
         }
     }
 

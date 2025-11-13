@@ -4,7 +4,7 @@ All notable changes to the "promptitude" extension will be documented in this fi
 
 ## [1.5.0] - 2025-11-12
 
-### Changed
+### Fixed
 
 - Enhanced logging and removed console.logs
 - Improved code quality and performance optimizations
