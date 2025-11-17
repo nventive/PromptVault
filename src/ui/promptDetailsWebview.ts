@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { PromptInfo } from './promptTreeProvider';
 import { FileSystemManager } from '../utils/fileSystem';
 import { Logger } from '../utils/logger';
+import { ConfigManager } from '../configManager';
+import { encodeRepositorySlug } from '../storage/repositoryStorage';
 
 export class PromptDetailsWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'promptitude.details';
@@ -11,7 +14,10 @@ export class PromptDetailsWebviewProvider implements vscode.WebviewViewProvider 
     private fileSystem: FileSystemManager;
     private logger: Logger;
 
-    constructor(private readonly _extensionUri: vscode.Uri) {
+    constructor(
+        private readonly _extensionUri: vscode.Uri,
+        private readonly config: ConfigManager
+    ) {
         this.fileSystem = new FileSystemManager();
         this.logger = Logger.get('PromptDetailsWebviewProvider');
     }
@@ -98,8 +104,6 @@ export class PromptDetailsWebviewProvider implements vscode.WebviewViewProvider 
      */
     private getActualFilePath(prompt: PromptInfo): string {
         const fs = require('fs');
-        const path = require('path');
-        const os = require('os');
         
         this.logger.debug(`Getting actual path - active: ${prompt.active}, repositoryUrl: ${prompt.repositoryUrl}, path: ${prompt.path}`);
         
@@ -111,19 +115,15 @@ export class PromptDetailsWebviewProvider implements vscode.WebviewViewProvider 
         
         // If workspace path doesn't exist and we have a repository URL, try repository storage
         if (prompt.repositoryUrl) {
-            // Compute prompts directory and user directory
-            const promptsDir = path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
-            const userDir = path.dirname(promptsDir);
+            // Get prompts directory and compute repository storage directory
+            const promptsDir = this.config.getPromptsDirectory();
+            const repoStorageDir = path.join(path.dirname(promptsDir), 'repos');
             
-            // Encode repository URL the same way as SyncManager
-            const encodedUrl = prompt.repositoryUrl
-                .replace(/https?:\/\//, '')
-                .replace(/[^\w\-\.]/g, '_')
-                .replace(/_+/g, '_')
-                .toLowerCase();
+            // Encode repository URL using the same logic as SyncManager
+            const encodedUrl = encodeRepositorySlug(prompt.repositoryUrl);
             
-            // Store outside prompts directory to prevent Copilot from scanning
-            const repoStoragePath = path.join(userDir, '.promptitude', 'repos', encodedUrl, prompt.name);
+            // Build path to repository storage
+            const repoStoragePath = path.join(repoStorageDir, encodedUrl, prompt.name);
             
             if (fs.existsSync(repoStoragePath)) {
                 this.logger.debug(`File exists at repository storage: ${repoStoragePath}`);
@@ -215,15 +215,12 @@ export class PromptDetailsWebviewProvider implements vscode.WebviewViewProvider 
         }
 
         try {
-            const path = require('path');
-            const os = require('os');
-            
             const baseName = this._currentPrompt.name.replace(/\.[^/.]+$/, '');
             const extension = this._currentPrompt.name.substring(baseName.length);
             const newName = `${baseName}_copy${extension}`;
             
             // Always write to workspace directory for duplicates
-            const promptsDir = path.join(os.homedir(), 'Library', 'Application Support', 'Code', 'User', 'prompts');
+            const promptsDir = this.config.getPromptsDirectory();
             const newPath = path.join(promptsDir, newName);
             
             // Read from actual path (repository storage for inactive prompts)

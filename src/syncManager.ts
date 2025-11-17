@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ConfigManager } from './configManager';
 import { StatusBarManager, SyncStatus } from './statusBarManager';
 import { Logger } from './utils/logger';
 import { NotificationManager } from './utils/notifications';
 import { GitApiManager, GitTreeItem } from './utils/gitProvider';
+import { encodeRepositorySlug, isLegacySlug, migrateLegacySlug } from './storage/repositoryStorage';
 import { GitProviderFactory } from './utils/gitProviderFactory';
 import { FileSystemManager } from './utils/fileSystem';
 import { AzureDevOpsApiManager } from './utils/azureDevOps';
@@ -623,7 +625,6 @@ export class SyncManager {
     private getRepositoryStorageDirectory(): string {
         // Store repositories in a sibling directory to prompts
         // This ensures profile-specific storage when using VS Code profiles
-        const path = require('path');
         const promptsDir = this.config.getPromptsDirectory();
         const parentDir = path.dirname(promptsDir);
         return this.fileSystem.joinPath(parentDir, 'repos');
@@ -634,7 +635,6 @@ export class SyncManager {
      */
     private async migrateRepositoryStorage(): Promise<void> {
         try {
-            const path = require('path');
             const fs = require('fs').promises;
             const promptsDir = this.config.getPromptsDirectory();
             
@@ -687,8 +687,70 @@ export class SyncManager {
             } else {
                 this.logger.debug('No repository storage to migrate');
             }
+            
+            // Migrate legacy underscore-based slugs to base64url format
+            await this.migrateLegacySlugs();
         } catch (error) {
             this.logger.error('Error during repository storage migration', error instanceof Error ? error : undefined);
+            // Don't throw - allow extension to continue even if migration fails
+        }
+    }
+
+    /**
+     * Migrate legacy underscore-based repository slugs to base64url format
+     */
+    private async migrateLegacySlugs(): Promise<void> {
+        try {
+            if (!await this.fileSystem.directoryExists(this.repoStorageDir)) {
+                this.logger.debug('No repository storage directory, skipping legacy slug migration');
+                return;
+            }
+
+            const fs = require('fs').promises;
+            const entries = await fs.readdir(this.repoStorageDir, { withFileTypes: true });
+            
+            let migratedCount = 0;
+            
+            for (const entry of entries) {
+                if (!entry.isDirectory()) {
+                    continue;
+                }
+                
+                const oldSlug = entry.name;
+                
+                // Check if this is a legacy slug
+                if (!isLegacySlug(oldSlug)) {
+                    continue;
+                }
+                
+                try {
+                    // Convert to new base64url slug
+                    const newSlug = migrateLegacySlug(oldSlug);
+                    const oldPath = path.join(this.repoStorageDir, oldSlug);
+                    const newPath = path.join(this.repoStorageDir, newSlug);
+                    
+                    // Check if new path already exists (avoid overwriting)
+                    if (await this.fileSystem.directoryExists(newPath)) {
+                        this.logger.warn(`Skipping migration of ${oldSlug}: target ${newSlug} already exists`);
+                        continue;
+                    }
+                    
+                    // Rename directory
+                    await fs.rename(oldPath, newPath);
+                    migratedCount++;
+                    this.logger.info(`Migrated legacy slug: ${oldSlug} -> ${newSlug}`);
+                } catch (error) {
+                    this.logger.error(`Failed to migrate legacy slug ${oldSlug}`, error instanceof Error ? error : undefined);
+                }
+            }
+            
+            if (migratedCount > 0) {
+                this.logger.info(`Successfully migrated ${migratedCount} legacy repository slug(s) to base64url format`);
+            } else {
+                this.logger.debug('No legacy slugs found to migrate');
+            }
+        } catch (error) {
+            this.logger.error('Error during legacy slug migration', error instanceof Error ? error : undefined);
             // Don't throw - allow extension to continue even if migration fails
         }
     }
@@ -697,13 +759,9 @@ export class SyncManager {
      * Get the storage path for a specific repository
      */
     private getRepositoryPath(repositoryUrl: string): string {
-        // Create a safe directory name from repository URL
-        const safeName = repositoryUrl
-            .replace(/https?:\/\//, '')
-            .replace(/[^\w\-\.]/g, '_')
-            .replace(/_+/g, '_')
-            .toLowerCase();
-        return this.fileSystem.joinPath(this.repoStorageDir, safeName);
+        // Use reversible Base64 URL encoding for repository slug
+        const slug = encodeRepositorySlug(repositoryUrl);
+        return this.fileSystem.joinPath(this.repoStorageDir, slug);
     }
 
     /**
@@ -805,7 +863,6 @@ export class SyncManager {
      */
     private async fixBrokenSymlinks(): Promise<void> {
         const fs = require('fs').promises;
-        const path = require('path');
         const promptsDir = this.config.getPromptsDirectory();
         let fixedCount = 0;
 
@@ -875,8 +932,6 @@ export class SyncManager {
      * Extract repository URL from a symlink target path (including old location paths)
      */
     private extractRepositoryUrlFromTargetPath(targetPath: string): string | undefined {
-        const path = require('path');
-        
         try {
             // Split the path and look for the repos directory
             const pathParts = targetPath.split(path.sep);
@@ -973,7 +1028,6 @@ export class SyncManager {
      */
     async cleanupOrphanedPrompts(): Promise<{ removed: number; errors: string[] }> {
         const fs = require('fs').promises;
-        const path = require('path');
         const promptsDir = this.config.getPromptsDirectory();
         let removed = 0;
         const errors: string[] = [];
@@ -1004,8 +1058,9 @@ export class SyncManager {
 
                     // Check if this file exists in any repository storage
                     let existsInRepo = false;
-                    for (const repoUrl of this.config.repositories) {
-                        const repoPath = this.getRepositoryPath(repoUrl);
+                    for (const repoConfig of this.config.repositoryConfigs) {
+                        // Use the base URL (without branch) for repository path computation
+                        const repoPath = this.getRepositoryPath(repoConfig.url);
                         const repoFilePath = path.join(repoPath, entry.name);
                         
                         if (await this.fileSystem.fileExists(repoFilePath)) {

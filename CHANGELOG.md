@@ -2,6 +2,16 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Repository Slug Encoding**: Replaced lossy underscore-based repository slug encoding with reversible Base64 URL encoding
+  - Moved repository slugging into shared helper `src/storage/repositoryStorage.ts`
+  - Added `encodeRepositorySlug` and `decodeRepositorySlug` functions using Base64 URL encoding
+  - Implemented automatic migration from legacy underscore-based slugs to new format
+  - Prevents data loss from ambiguous URL-to-slug conversions (e.g., URLs with underscores)
+
 ## [1.5.0] - 2025-11-12
 
 ### Fixed

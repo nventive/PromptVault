@@ -35,7 +35,7 @@ export class PromptCommandManager {
         });
 
         const deselectAllCommand = vscode.commands.registerCommand('prompts.deselectAll', () => {
-            this.deselectAll();
+            return this.deselectAll();
         });
 
         // Prompt action commands
@@ -158,9 +158,16 @@ export class PromptCommandManager {
         }
     }
 
-    private deselectAll(): void {
+    private async deselectAll(): Promise<void> {
         try {
-            this.treeProvider.deselectAll();
+            // Get all currently selected prompts before deselecting
+            const selected = [...this.treeProvider.getSelectedPrompts()];
+            
+            // Deactivate each prompt using toggleSelection to ensure symlinks are removed
+            for (const prompt of selected) {
+                await this.toggleSelection(prompt);
+            }
+            
             vscode.window.showInformationMessage('All prompts deactivated');
             this.logger.debug('Deactivated all prompts');
         } catch (error) {

@@ -100,8 +100,6 @@ export class ConfigManager {
             return this.customPath;
         }
 
-        const path = require('path');
-
         // Use profile-specific storage if context is available
         if (this.context && this.context.globalStorageUri) {
             // globalStorageUri is profile-specific in VS Code
@@ -111,8 +109,6 @@ export class ConfigManager {
         }
 
         // Fallback to global user data directory (legacy behavior)
-        const os = require('os');
-        
         switch (process.platform) {
             case 'win32':
                 return path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User');

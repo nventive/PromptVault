@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { PromptInfo, PromptTreeDataProvider } from './promptTreeProvider';
+import { PromptTreeDataProvider } from './promptTreeProvider';
 import { Logger } from '../utils/logger';
 import { ConfigManager } from '../configManager';
 
@@ -129,9 +129,6 @@ export class PromptCardsWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {
-        // Create a timestamp for cache busting
-        const timestamp = Date.now();
-        
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -629,11 +626,9 @@ export class PromptCardsWebviewProvider implements vscode.WebviewViewProvider {
         // Handle messages from extension
         window.addEventListener('message', event => {
             const message = event.data;
-            console.log('Received message from extension:', message.command, message);
             switch (message.command) {
                 case 'updatePrompts':
                     allPrompts = message.prompts || [];
-                    console.log('Updating prompts, count:', allPrompts.length);
                     renderFilters();
                     applyFiltersAndRender();
                     break;
@@ -879,10 +874,8 @@ export class PromptCardsWebviewProvider implements vscode.WebviewViewProvider {
 
         function renderPrompts(prompts) {
             const container = document.getElementById('cardsContainer');
-            console.log('Rendering prompts:', prompts);
             
             if (!prompts || prompts.length === 0) {
-                console.log('No prompts to display');
                 container.innerHTML = \`
                     <div class="empty-state">
                         <h3>No prompts found</h3>
