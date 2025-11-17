@@ -314,8 +314,8 @@ export class PromptTreeDataProvider implements vscode.TreeDataProvider<PromptTre
                     
                     for (const file of repoFiles) {
                         if (this.isPromptFile(file)) {
-                            // Check if this prompt is already loaded from workspace
-                            const existingPrompt = this.findPromptByName(file);
+                            // Check if this prompt is already loaded from the same repository
+                            const existingPrompt = this.findPromptByNameAndRepository(file, repositoryUrl);
                             
                             if (!existingPrompt) {
                                 // Create prompt info for repository storage file
@@ -329,11 +329,8 @@ export class PromptTreeDataProvider implements vscode.TreeDataProvider<PromptTre
                                     addedCount++;
                                 }
                             } else {
-                                // Update existing prompt with repository URL if it doesn't have one
-                                if (!existingPrompt.repositoryUrl && repositoryUrl) {
-                                    existingPrompt.repositoryUrl = repositoryUrl;
-                                    this.logger.debug(`Updated repository URL for existing prompt: ${file}`);
-                                }
+                                // Prompt already exists from the same repository
+                                this.logger.debug(`Skipping duplicate prompt from same repository: ${file} (${repositoryUrl})`);
                                 skippedCount++;
                             }
                         }
@@ -348,11 +345,28 @@ export class PromptTreeDataProvider implements vscode.TreeDataProvider<PromptTre
     }
 
     /**
-     * Find a prompt by its filename across all categories
+     * Find a prompt by its filename across all categories (legacy method)
+     * @deprecated Use findPromptByNameAndRepository for repository-aware lookup
      */
     private findPromptByName(fileName: string): PromptInfo | undefined {
         for (const prompts of this.prompts.values()) {
             const found = prompts.find(p => p.name === fileName);
+            if (found) {
+                return found;
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Find a prompt by its filename and repository URL (composite key)
+     * This prevents conflating prompts with the same name from different repositories
+     */
+    private findPromptByNameAndRepository(fileName: string, repositoryUrl?: string): PromptInfo | undefined {
+        for (const prompts of this.prompts.values()) {
+            const found = prompts.find(p => 
+                p.name === fileName && p.repositoryUrl === repositoryUrl
+            );
             if (found) {
                 return found;
             }

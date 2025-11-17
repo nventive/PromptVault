@@ -12,6 +12,37 @@ All notable changes to the "promptitude" extension will be documented in this fi
   - Implemented automatic migration from legacy underscore-based slugs to new format
   - Prevents data loss from ambiguous URL-to-slug conversions (e.g., URLs with underscores)
 
+- **Repository Path Resolution**: Fixed cross-platform repository path resolution for inactive prompts
+  - Removed hard-coded macOS-only paths in `promptDetailsWebview.ts`
+  - Now uses `ConfigManager.getPromptsDirectory()` for cross-platform support
+  - Fixed path resolution to use migrated storage location
+  - Enables details view for repository-sourced prompts on all platforms
+
+- **Bulk Deactivate**: Fixed critical bug where bulk-deactivate left symlinks on disk
+  - Updated `deselectAll()` to properly remove symlinks via `syncManager.deactivatePrompt()`
+  - Previously only flipped boolean flags without removing actual files
+  - Now properly deactivates all prompts and cleans up symlinks
+
+- **Duplicate Prompt Detection**: Fixed insufficient duplicate detection causing prompt conflation
+  - Added `findPromptByNameAndRepository()` method using composite key (filename + repository URL)
+  - Prevents prompts with same filename from different repositories being conflated
+  - Each repository's version of a prompt is now properly loaded and tracked
+
+- **Branch Suffix Handling**: Fixed repository path computation in cleanup operations
+  - Updated `cleanupOrphanedPrompts()` to use `repositoryConfigs` instead of raw repository URLs
+  - Properly strips branch suffix before computing repository paths
+  - Ensures consistent path resolution across all operations
+
+- **Code Quality**: Removed variable shadowing of imported modules
+  - Removed local `const path = require('path')` declarations
+  - Added top-level `import * as path from 'path'` where needed
+  - Improved code consistency and eliminated confusion
+
+- **UI Cleanup**: Removed console.log statements and unused imports
+  - Removed debug console.log statements from webview code
+  - Removed unused `PromptInfo` import from `promptCardsWebview.ts`
+  - Removed unused `timestamp` variable
+
 ## [1.5.0] - 2025-11-12
 
 ### Fixed
