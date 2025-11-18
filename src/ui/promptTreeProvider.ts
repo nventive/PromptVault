@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { ConfigManager } from '../configManager';
 import { FileSystemManager } from '../utils/fileSystem';
 import { Logger } from '../utils/logger';
-import { decodeRepositorySlug, isLegacySlug, legacySlugToUrl } from '../storage/repositoryStorage';
+import { decodeRepositorySlug } from '../storage/repositoryStorage';
 
 export interface PromptInfo {
     name: string;
@@ -610,22 +610,8 @@ export class PromptTreeDataProvider implements vscode.TreeDataProvider<PromptTre
 
     /**
      * Decode a repository URL from its encoded directory name
-     * Supports both new base64url format and legacy underscore-based format
      */
     private decodeRepositoryUrl(encodedUrl: string): string {
-        // Check if this is a legacy underscore-based slug
-        if (isLegacySlug(encodedUrl)) {
-            this.logger.debug(`Detected legacy slug format: ${encodedUrl}`);
-            return legacySlugToUrl(encodedUrl);
-        }
-        
-        // Use new base64url decoding
-        try {
-            return decodeRepositorySlug(encodedUrl);
-        } catch (error) {
-            // Fallback to legacy format if base64url decoding fails
-            this.logger.warn(`Failed to decode as base64url, falling back to legacy format: ${encodedUrl}`);
-            return legacySlugToUrl(encodedUrl);
-        }
+        return decodeRepositorySlug(encodedUrl);
     }
 }

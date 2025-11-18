@@ -5,7 +5,7 @@ import { StatusBarManager, SyncStatus } from './statusBarManager';
 import { Logger } from './utils/logger';
 import { NotificationManager } from './utils/notifications';
 import { GitApiManager, GitTreeItem } from './utils/gitProvider';
-import { encodeRepositorySlug, isLegacySlug, migrateLegacySlug } from './storage/repositoryStorage';
+import { encodeRepositorySlug } from './storage/repositoryStorage';
 import { GitProviderFactory } from './utils/gitProviderFactory';
 import { FileSystemManager } from './utils/fileSystem';
 import { AzureDevOpsApiManager } from './utils/azureDevOps';
@@ -687,70 +687,8 @@ export class SyncManager {
             } else {
                 this.logger.debug('No repository storage to migrate');
             }
-            
-            // Migrate legacy underscore-based slugs to base64url format
-            await this.migrateLegacySlugs();
         } catch (error) {
             this.logger.error('Error during repository storage migration', error instanceof Error ? error : undefined);
-            // Don't throw - allow extension to continue even if migration fails
-        }
-    }
-
-    /**
-     * Migrate legacy underscore-based repository slugs to base64url format
-     */
-    private async migrateLegacySlugs(): Promise<void> {
-        try {
-            if (!await this.fileSystem.directoryExists(this.repoStorageDir)) {
-                this.logger.debug('No repository storage directory, skipping legacy slug migration');
-                return;
-            }
-
-            const fs = require('fs').promises;
-            const entries = await fs.readdir(this.repoStorageDir, { withFileTypes: true });
-            
-            let migratedCount = 0;
-            
-            for (const entry of entries) {
-                if (!entry.isDirectory()) {
-                    continue;
-                }
-                
-                const oldSlug = entry.name;
-                
-                // Check if this is a legacy slug
-                if (!isLegacySlug(oldSlug)) {
-                    continue;
-                }
-                
-                try {
-                    // Convert to new base64url slug
-                    const newSlug = migrateLegacySlug(oldSlug);
-                    const oldPath = path.join(this.repoStorageDir, oldSlug);
-                    const newPath = path.join(this.repoStorageDir, newSlug);
-                    
-                    // Check if new path already exists (avoid overwriting)
-                    if (await this.fileSystem.directoryExists(newPath)) {
-                        this.logger.warn(`Skipping migration of ${oldSlug}: target ${newSlug} already exists`);
-                        continue;
-                    }
-                    
-                    // Rename directory
-                    await fs.rename(oldPath, newPath);
-                    migratedCount++;
-                    this.logger.info(`Migrated legacy slug: ${oldSlug} -> ${newSlug}`);
-                } catch (error) {
-                    this.logger.error(`Failed to migrate legacy slug ${oldSlug}`, error instanceof Error ? error : undefined);
-                }
-            }
-            
-            if (migratedCount > 0) {
-                this.logger.info(`Successfully migrated ${migratedCount} legacy repository slug(s) to base64url format`);
-            } else {
-                this.logger.debug('No legacy slugs found to migrate');
-            }
-        } catch (error) {
-            this.logger.error('Error during legacy slug migration', error instanceof Error ? error : undefined);
             // Don't throw - allow extension to continue even if migration fails
         }
     }
