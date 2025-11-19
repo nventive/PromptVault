@@ -2,12 +2,24 @@
 
 All notable changes to the "promptitude" extension will be documented in this file.
 
-## vNext
+## [Unreleased]
+
+### Changed
+
+- Renamed "chatmodes" to "agents" throughout the UI to align with VS Code's current terminology
 
 ### Fixed
 
-- **VS Code Profile Support**: Fixed issue where extension didn't work properly with multiple VS Code profiles
-- **Chatmodes support**: Chatmodes will now sync correctly.
+- Improved prompt management UI with bug fixes and stability improvements
+- Fixed duplicate filename handling across multiple repositories
+- Enhanced cross-platform compatibility
+- Code quality improvements
+
+## [1.5.0] - 2025-11-12
+
+### Added
+
+- **Prompt Management UI**: Interactive webview interface for browsing, searching, and managing prompts from configured repositories
 
 ## [1.4.0] - 2025-10-03
 

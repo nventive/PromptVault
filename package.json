@@ -90,11 +90,39 @@
         }
       }
     },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptitude",
+          "title": "Prompts",
+          "icon": "resources/promptitude-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "promptitude": [
+        {
+          "id": "promptitude.cards",
+          "name": "Prompts",
+          "type": "webview",
+          "when": "true",
+          "icon": "$(list-flat)"
+        },
+        {
+          "id": "promptitude.details",
+          "name": "Prompt Details",
+          "type": "webview",
+          "when": "true",
+          "icon": "$(preview)"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "promptitude.syncNow",
         "title": "Sync Now",
-        "category": "Promptitude"
+        "category": "Promptitude",
+        "icon": "$(sync)"
       },
       {
         "command": "promptitude.showStatus",
@@ -105,6 +133,12 @@
         "command": "promptitude.openPromptsFolder",
         "title": "Open Prompts Folder",
         "category": "Promptitude"
+      },
+      {
+        "command": "promptitude.cleanupOrphanedPrompts",
+        "title": "Clean Up Orphaned Prompts",
+        "category": "Promptitude",
+        "icon": "$(trash)"
       },
       {
         "command": "promptitude.addAzureDevOpsPAT",
@@ -120,8 +154,82 @@
         "command": "promptitude.clearAzureDevOpsCache",
         "title": "Clear Azure DevOps Authentication Cache",
         "category": "Promptitude"
+      },
+      {
+        "command": "prompts.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "prompts.toggleSelection",
+        "title": "Toggle Active",
+        "icon": "$(check)"
+      },
+      {
+        "command": "prompts.selectAll",
+        "title": "Activate All",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "prompts.deselectAll",
+        "title": "Deactivate All",
+        "icon": "$(close-all)"
+      },
+      {
+        "command": "prompts.editPrompt",
+        "title": "Edit Prompt",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "prompts.viewPrompt",
+        "title": "View Details",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "prompts.deletePrompt",
+        "title": "Delete Prompt",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "prompts.duplicatePrompt",
+        "title": "Duplicate Prompt",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "prompts.openSettings",
+        "title": "Open Settings",
+        "icon": "$(settings-gear)"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "prompts.refresh",
+          "when": "view == promptitude.cards",
+          "group": "navigation"
+        },
+        {
+          "command": "promptitude.syncNow",
+          "when": "view == promptitude.cards",
+          "group": "navigation"
+        },
+        {
+          "command": "prompts.selectAll",
+          "when": "view == promptitude.cards",
+          "group": "1_selection"
+        },
+        {
+          "command": "prompts.deselectAll",
+          "when": "view == promptitude.cards",
+          "group": "1_selection"
+        },
+        {
+          "command": "prompts.openSettings",
+          "when": "view == promptitude.cards",
+          "group": "2_settings"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
