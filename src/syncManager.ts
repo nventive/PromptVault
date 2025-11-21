@@ -52,10 +52,10 @@ export class SyncManager {
 
     async initialize(context: vscode.ExtensionContext): Promise<void> {
         this.context = context;
-        
+
         // Update notification manager with extension context
         this.notifications = new NotificationManager(this.config, this.context, this.logger);
-        
+
         this.logger.info('Initializing SyncManager...');
 
         // Migrate repository storage from old location to new location
@@ -77,7 +77,7 @@ export class SyncManager {
 
         // Schedule periodic syncs
         this.scheduleNextSync();
-        
+
         this.logger.info('SyncManager initialized successfully');
     }
 
@@ -124,20 +124,20 @@ export class SyncManager {
                     this.logger.error('All repositories failed to sync');
                 }
             }
-            
+
             // Refresh tree provider after recreating symlinks
             if (this.treeProvider) {
                 this.logger.debug('Refreshing tree provider after sync and symlink recreation');
                 this.treeProvider.refresh();
             }
-            
+
             // Schedule next sync
             this.scheduleNextSync();
 
-            return { 
-                success: result.overallSuccess, 
-                itemsUpdated: result.totalItemsUpdated, 
-                error: result.errors.length > 0 ? result.errors.join('; ') : undefined 
+            return {
+                success: result.overallSuccess,
+                itemsUpdated: result.totalItemsUpdated,
+                error: result.errors.length > 0 ? result.errors.join('; ') : undefined
             };
 
         } catch (error) {
@@ -145,14 +145,14 @@ export class SyncManager {
             this.logger.error('Sync failed', error instanceof Error ? error : undefined);
             this.statusBar.setStatus(SyncStatus.Error, 'Sync failed');
             await this.notifications.showSyncError(errorMessage);
-            
+
             return { success: false, itemsUpdated: 0, error: errorMessage };
         }
     }
 
     private filterRelevantFiles(tree: GitTreeItem[]): GitTreeItem[] {
         const allowedPaths: string[] = [];
-        
+
         // Build list of allowed paths based on settings
         if (this.config.syncChatmode) {
             allowedPaths.push(REPO_SYNC_CHAT_MODE_PATH);
@@ -172,25 +172,25 @@ export class SyncManager {
 
         const filtered = tree.filter(item => {
             const isBlob = item.type === 'blob';
-            
+
             // Normalize path separators and remove leading slash for comparison
             const normalizedPath = item.path.replace(/\\/g, '/').replace(/^\/+/, '');
-            
+
             const matchesPath = allowedPaths.some(path => {
                 const normalizedAllowedPath = path.replace(/\\/g, '/').replace(/^\/+/, '');
                 return normalizedPath.startsWith(normalizedAllowedPath);
             });
-            
+
             // Support more file extensions including .prompt.md
-            const isRelevantFile = item.path.endsWith('.md') || 
-                                 item.path.endsWith('.txt');
+            const isRelevantFile = item.path.endsWith('.md') ||
+                item.path.endsWith('.txt');
             if(isRelevantFile) {
                 this.logger.debug(`  ${item.path}: blob=${isBlob}, matchesPath=${matchesPath}, (normalized: ${normalizedPath})`);
             }
 
             return isBlob && matchesPath && isRelevantFile;
         });
-        
+
         this.logger.debug(`Filtered result: ${filtered.length} files out of ${tree.length} total`);
         return filtered;
     }
@@ -199,7 +199,7 @@ export class SyncManager {
         // Construct repository URL based on provider
         const providerName = gitApi.getProviderName();
         let repositoryUrl: string;
-        
+
         if (providerName === 'github') {
             repositoryUrl = `https://github.com/${owner}/${repo}`;
         } else if (providerName === 'azure') {
@@ -207,10 +207,10 @@ export class SyncManager {
         } else {
             repositoryUrl = `${providerName}/${owner}/${repo}`;
         }
-        
+
         const repoStoragePath = this.getRepositoryPath(repositoryUrl);
         await this.fileSystem.ensureDirectoryExists(repoStoragePath);
-        
+
         let itemsUpdated = 0;
 
         for (const file of files) {
@@ -230,7 +230,7 @@ export class SyncManager {
                 // Save to repository storage directory
                 const fileName = this.fileSystem.getBasename(file.path);
                 const repoFilePath = this.fileSystem.joinPath(repoStoragePath, fileName);
-                
+
                 // Check if file needs updating
                 if(!content) {
                     this.logger.warn(`No content retrieved for ${file.path}, skipping`);
@@ -238,18 +238,18 @@ export class SyncManager {
                 }
 
                 const needsUpdate = await this.shouldUpdateFile(repoFilePath, content);
-                
+
                 if (needsUpdate) {
                     await this.fileSystem.writeFileContent(repoFilePath, content);
                     itemsUpdated++;
                     this.logger.debug(`Updated file in repository storage: ${repoFilePath}`);
-                    
+
                     // If this prompt is currently active, update the symlink in workspace
                     await this.updateActivePromptSymlink(fileName, repositoryUrl);
                 } else {
                     this.logger.debug(`File unchanged in repository storage: ${repoFilePath}`);
                 }
-                
+
             } catch (error) {
                 this.logger.warn(`Failed to sync file ${file.path}: ${error}`);
                 // Continue with other files even if one fails
@@ -266,10 +266,10 @@ export class SyncManager {
 
         try {
             const promptsDir = this.config.getPromptsDirectory();
-            
+
             // Ensure the prompts directory exists before trying to read it
             await this.fileSystem.ensureDirectoryExists(promptsDir);
-            
+
             const existingFiles = await this.fileSystem.readDirectory(promptsDir);
             const allPrompts = this.treeProvider.getAllPrompts();
 
@@ -327,7 +327,7 @@ export class SyncManager {
             const branch = entry.branch;
             try {
                 this.logger.debug(`Syncing repository: ${repoUrl}`);
-                
+
                 // Get or create Git API manager for this repository
                 let gitApi = this.gitProviders.get(repoUrl);
                 if (!gitApi) {
@@ -354,7 +354,7 @@ export class SyncManager {
                         }
                     }
                 }
-                
+
                 // Parse repository URL
                 const { owner, repo } = gitApi.parseRepositoryUrl(repoUrl);
                 this.logger.debug(`Syncing from ${owner}/${repo} branch ${branch}`);
@@ -362,11 +362,11 @@ export class SyncManager {
                 // Get repository tree
                 const tree = await gitApi.getRepositoryTree(owner, repo, branch);
                 this.logger.debug(`Retrieved repository tree with ${tree.tree.length} items for ${repoUrl}`);
-                
+
 
                 // Filter relevant files
                 const relevantFiles = this.filterRelevantFiles(tree.tree);
-                
+
                 if(relevantFiles.length === 0) {
                     this.logger.warn(`No relevant files found to sync in ${repoUrl} based on current settings`);
                     const promptLocation = `${REPO_SYNC_CHAT_MODE_PATH}, ${REPO_SYNC_INSTRUCTIONS_PATH}, ${REPO_SYNC_PROMPT_PATH}`;
@@ -383,7 +383,7 @@ export class SyncManager {
 
                 // Sync files
                 const itemsUpdated = await this.syncFiles(gitApi, owner, repo, relevantFiles, branch);
-                
+
                 results.push({
                     repository: repoUrl,
                     success: true,
@@ -396,7 +396,7 @@ export class SyncManager {
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                 this.logger.warn(`Failed to sync repository ${repoUrl}: ${errorMessage}`);
-                
+
                 results.push({
                     repository: repoUrl,
                     success: false,
@@ -409,7 +409,7 @@ export class SyncManager {
         }
 
         const overallSuccess = results.every(r => r.success);
-        
+
         return {
             overallSuccess,
             totalItemsUpdated,
@@ -440,11 +440,11 @@ export class SyncManager {
 
         // Get the filename from the local path
         const fileName = this.fileSystem.getBasename(localPath);
-        
+
         // Find the prompt in the tree provider by filename
         const allPrompts = this.treeProvider.getAllPrompts();
         const matchingPrompt = allPrompts.find(prompt => prompt.name === fileName);
-        
+
         if (!matchingPrompt) {
             // If prompt is not found in tree (new file), sync it
             this.logger.debug(`Prompt ${fileName} not found in tree, syncing as new file`);
@@ -470,14 +470,14 @@ export class SyncManager {
         }
 
         const interval = this.config.getSyncInterval();
-        
+
         if (interval <= 0) {
             this.logger.debug('Manual sync mode, not scheduling automatic sync');
             return;
         }
 
         this.logger.debug(`Scheduling next sync in ${interval}ms (${this.config.frequency})`);
-        
+
         this.timer = setTimeout(() => {
             this.logger.info(`Automatic sync triggered (${this.config.frequency})`);
             this.syncNow();
@@ -498,11 +498,11 @@ export class SyncManager {
 
         const repositories = this.config.repositories;
         const repoConfigs = this.config.repositoryConfigs;
-        
+
         // Check authentication status for different providers
         const usedProviders = this.config.getUsedProviders();
         const authStatus: string[] = [];
-        
+
         if (usedProviders.has('github')) {
             try {
                 const session = await vscode.authentication.getSession('github', ['repo'], { createIfNone: false });
@@ -511,7 +511,7 @@ export class SyncManager {
                 authStatus.push('GitHub: ❌ Not authenticated');
             }
         }
-        
+
         if (usedProviders.has('azure') && this.context) {
             try {
                 const azureManager = new AzureDevOpsApiManager(this.context);
@@ -522,7 +522,7 @@ export class SyncManager {
                 authStatus.push('Azure DevOps: ❌ No PATs configured');
             }
         }
-        
+
         const items = [
             'Sync Status',
             '──────────',
@@ -535,7 +535,7 @@ export class SyncManager {
             `Debug Mode: ${this.config.debug ? '✅' : '❌'}`,
             `Active Prompts Only: ✅ ${this.getSyncStatistics()}`,
         ];
-        
+
         // Add authentication section if there are providers to show
         if (authStatus.length > 0) {
             items.push(
@@ -589,7 +589,7 @@ export class SyncManager {
         quickPick.title = 'Promptitude Extension Status';
         quickPick.placeholder = 'Extension status and configuration';
         quickPick.canSelectMany = false;
-        
+
         quickPick.onDidAccept(() => {
             quickPick.hide();
         });
@@ -600,18 +600,18 @@ export class SyncManager {
     async openPromptsFolder(): Promise<void> {
         try {
             const promptsDir = this.config.getPromptsDirectory();
-            
+
             // Ensure directory exists
             await this.fileSystem.ensureDirectoryExists(promptsDir);
-            
+
             // Open folder in system file explorer
             const folderUri = vscode.Uri.file(promptsDir);
             await vscode.commands.executeCommand('revealFileInOS', folderUri);
-            
+
             this.logger.info(`Opened prompts folder: ${promptsDir}`);
-            
+
             // Show info message
-            
+
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             this.logger.error('Failed to open prompts folder', error instanceof Error ? error : undefined);
@@ -637,26 +637,26 @@ export class SyncManager {
         try {
             const fs = require('fs').promises;
             const promptsDir = this.config.getPromptsDirectory();
-            
+
             // Old location: inside prompts directory
             const oldRepoStorage = path.join(promptsDir, '.promptitude', 'repos');
-            
+
             // New location: outside prompts directory
             const newRepoStorage = this.repoStorageDir;
-            
+
             // Check if old location exists and new location doesn't
             if (await this.fileSystem.directoryExists(oldRepoStorage)) {
                 this.logger.info('Migrating repository storage to new location...');
-                
+
                 // Ensure parent directory exists for new location
                 const newParentDir = path.dirname(newRepoStorage);
                 await this.fileSystem.ensureDirectoryExists(newParentDir);
-                
+
                 // Move the entire repos directory
                 try {
                     await fs.rename(oldRepoStorage, newRepoStorage);
                     this.logger.info(`Successfully migrated repository storage from ${oldRepoStorage} to ${newRepoStorage}`);
-                    
+
                     // Clean up old .promptitude directory if it's empty
                     const oldPromptitudeDir = path.join(promptsDir, '.promptitude');
                     try {
@@ -673,7 +673,7 @@ export class SyncManager {
                     // If rename fails, try copy and delete
                     this.logger.warn('Could not move repository storage, attempting copy...');
                     const ncp = require('child_process').spawnSync('cp', ['-R', oldRepoStorage, newRepoStorage]);
-                    
+
                     if (ncp.status === 0) {
                         // Delete old directory after successful copy
                         await fs.rm(oldRepoStorage, { recursive: true, force: true });
@@ -718,8 +718,16 @@ export class SyncManager {
 
             // Create symlink using Node.js fs module
             const fs = require('fs').promises;
-            await fs.symlink(sourcePath, targetPath, 'file');
-            
+            const os = require('os');
+
+            if (os.platform() === 'win32') {
+                // Copy instead of symlink on Windows
+                await fs.copyFile(sourcePath, targetPath);
+
+            } else {
+                await fs.symlink(sourcePath, targetPath, 'file');
+            }
+
             this.logger.debug(`Created symlink: ${sourcePath} -> ${targetPath}`);
         } catch (error) {
             this.logger.error(`Failed to create symlink: ${sourcePath} -> ${targetPath}`, error instanceof Error ? error : undefined);
@@ -736,7 +744,7 @@ export class SyncManager {
                 // Check if it's actually a symlink before removing
                 const fs = require('fs').promises;
                 const stats = await fs.lstat(targetPath);
-                
+
                 if (stats.isSymbolicLink()) {
                     await vscode.workspace.fs.delete(vscode.Uri.file(targetPath));
                     this.logger.debug(`Removed symlink: ${targetPath}`);
@@ -766,14 +774,14 @@ export class SyncManager {
             // Get all active prompts from tree provider
             const activePrompts = this.treeProvider.getSelectedPrompts();
             let recreatedCount = 0;
-            
+
             this.logger.debug(`Checking ${activePrompts.length} active prompts for missing symlinks`);
 
             for (const prompt of activePrompts) {
                 try {
                     const workspacePath = prompt.path;
                     const exists = await this.fileSystem.fileExists(workspacePath);
-                    
+
                     if (!exists && prompt.repositoryUrl) {
                         // Symlink is missing, recreate it
                         const fileName = this.fileSystem.getBasename(workspacePath);
@@ -807,7 +815,7 @@ export class SyncManager {
         try {
             // Ensure the prompts directory exists before trying to scan it
             await this.fileSystem.ensureDirectoryExists(promptsDir);
-            
+
             const entries = await fs.readdir(promptsDir, { withFileTypes: true });
 
             for (const entry of entries) {
@@ -816,29 +824,29 @@ export class SyncManager {
                 }
 
                 const fullPath = path.join(promptsDir, entry.name);
-                
+
                 try {
                     const stats = await fs.lstat(fullPath);
-                    
+
                     // Check if it's a symlink
                     if (stats.isSymbolicLink()) {
                         const targetPath = await fs.readlink(fullPath);
-                        
+
                         // Check if target exists
                         try {
                             await fs.stat(fullPath); // This follows the symlink
                         } catch (error) {
                             // Target doesn't exist - broken symlink
                             this.logger.warn(`Found broken symlink: ${entry.name} -> ${targetPath}`);
-                            
+
                             // Try to extract repository URL from the target path
                             const repositoryUrl = this.extractRepositoryUrlFromTargetPath(targetPath);
-                            
+
                             if (repositoryUrl) {
                                 // Check if file exists in new repository storage location
                                 const repoPath = this.getRepositoryPath(repositoryUrl);
                                 const newSourcePath = path.join(repoPath, entry.name);
-                                
+
                                 if (await this.fileSystem.fileExists(newSourcePath)) {
                                     // Remove broken symlink and recreate it
                                     await fs.unlink(fullPath);
@@ -874,7 +882,7 @@ export class SyncManager {
             // Split the path and look for the repos directory
             const pathParts = targetPath.split(path.sep);
             const reposIndex = pathParts.findIndex(part => part === 'repos');
-            
+
             if (reposIndex !== -1 && reposIndex + 1 < pathParts.length) {
                 const encodedRepoUrl = pathParts[reposIndex + 1];
                 // Decode the repository URL
@@ -883,7 +891,7 @@ export class SyncManager {
                     .replace(/^/, 'https://');
                 return decodedUrl;
             }
-            
+
             return undefined;
         } catch (error) {
             this.logger.warn(`Failed to extract repository URL from target path: ${targetPath}`);
@@ -897,21 +905,21 @@ export class SyncManager {
     private async updateActivePromptSymlink(fileName: string, repositoryUrl: string): Promise<void> {
         try {
             const workspacePath = this.fileSystem.joinPath(this.config.getPromptsDirectory(), fileName);
-            
+
             // Check if there's a symlink for this prompt in the workspace
             if (await this.fileSystem.fileExists(workspacePath)) {
                 const fs = require('fs').promises;
                 const stats = await fs.lstat(workspacePath);
-                
+
                 if (stats.isSymbolicLink()) {
                     // It's a symlink, update it to point to the new version
                     const repoPath = this.getRepositoryPath(repositoryUrl);
                     const newSourcePath = this.fileSystem.joinPath(repoPath, fileName);
-                    
+
                     // Remove old symlink and create new one
                     await this.removePromptSymlink(workspacePath);
                     await this.createPromptSymlink(newSourcePath, workspacePath);
-                    
+
                     this.logger.debug(`Updated symlink for active prompt: ${fileName}`);
                 }
             }
@@ -972,10 +980,10 @@ export class SyncManager {
 
         try {
             this.logger.info('Starting cleanup of orphaned prompts...');
-            
+
             // Ensure the prompts directory exists before trying to scan it
             await this.fileSystem.ensureDirectoryExists(promptsDir);
-            
+
             const entries = await fs.readdir(promptsDir, { withFileTypes: true });
 
             for (const entry of entries) {
@@ -985,10 +993,10 @@ export class SyncManager {
                 }
 
                 const fullPath = path.join(promptsDir, entry.name);
-                
+
                 try {
                     const stats = await fs.lstat(fullPath);
-                    
+
                     // Skip if it's already a symlink (these are the active prompts we want to keep)
                     if (stats.isSymbolicLink()) {
                         continue;
@@ -1000,7 +1008,7 @@ export class SyncManager {
                         // Use the base URL (without branch) for repository path computation
                         const repoPath = this.getRepositoryPath(repoConfig.url);
                         const repoFilePath = path.join(repoPath, entry.name);
-                        
+
                         if (await this.fileSystem.fileExists(repoFilePath)) {
                             existsInRepo = true;
                             break;
@@ -1033,7 +1041,7 @@ export class SyncManager {
 
     dispose(): void {
         this.logger.info('Disposing SyncManager...');
-        
+
         if (this.timer) {
             clearTimeout(this.timer);
             this.timer = null;
